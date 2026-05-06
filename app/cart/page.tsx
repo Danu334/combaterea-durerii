@@ -6,8 +6,6 @@ import Footer from '@/components/Footer'
 import Navbar from '@/components/Navbar'
 import { useCart, TicketType } from '@/context/CartContext'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type HandzoneOption = 'none' | 'botulinum' | 'locoregional' | 'locoregional-periop'
 
 interface BaseForm {
@@ -26,8 +24,6 @@ const HANDZONE_OPTIONS: { value: HandzoneOption; label: string }[] = [
   { value: 'locoregional',        label: 'Workshop – Locoregional techniques' },
   { value: 'locoregional-periop', label: 'Workshop – Locoregional techniques for perioperative pain management' },
 ]
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function defaultForm(type: TicketType): AnyForm {
   const base: BaseForm = { email: '', nume: '', prenume: '', adresa: '', telefon: '', handzone: 'none' }
@@ -58,8 +54,6 @@ function Field({ label, ...props }: { label: string } & React.InputHTMLAttribute
   )
 }
 
-// ─── Per-ticket form ──────────────────────────────────────────────────────────
-
 function TicketForm({ ticketType, ticketName, index, value, onChange }: {
   ticketType: TicketType; ticketName: string; index: number
   value: AnyForm; onChange: (v: AnyForm) => void
@@ -71,7 +65,6 @@ function TicketForm({ ticketType, ticketName, index, value, onChange }: {
 
   return (
     <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '2rem', marginBottom: '1.5rem' }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.5rem' }}>
         <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#1a3a6b', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700', flexShrink: 0 }}>{index + 1}</div>
         <div>
@@ -80,7 +73,6 @@ function TicketForm({ ticketType, ticketName, index, value, onChange }: {
         </div>
       </div>
 
-      {/* Common fields */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
         <Field label="Nume" placeholder="ex. Popescu" value={v.nume || ''} onChange={e => set('nume', e.target.value)} required />
         <Field label="Prenume" placeholder="ex. Ion" value={v.prenume || ''} onChange={e => set('prenume', e.target.value)} required />
@@ -105,7 +97,6 @@ function TicketForm({ ticketType, ticketName, index, value, onChange }: {
         </div>
       )}
 
-      {/* Handzone — 3 radio options, only one selectable */}
       <div style={{ marginTop: '8px' }}>
         <p style={{ ...labelStyle, marginBottom: '10px' }}>
           Adaugă un Handzone Workshop
@@ -113,34 +104,12 @@ function TicketForm({ ticketType, ticketName, index, value, onChange }: {
             +1.000 MDL / workshop
           </span>
         </p>
-
-        {/* None option */}
-        <div
-          onClick={() => set('handzone', 'none')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '12px',
-            padding: '12px 14px', marginBottom: '8px', borderRadius: '10px',
-            border: `1.5px solid ${v.handzone === 'none' ? '#1a3a6b' : '#e8e8e8'}`,
-            background: v.handzone === 'none' ? '#f0f4ff' : '#f9f9f9',
-            cursor: 'pointer', userSelect: 'none',
-          }}
-        >
+        <div onClick={() => set('handzone', 'none')} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', marginBottom: '8px', borderRadius: '10px', border: `1.5px solid ${v.handzone === 'none' ? '#1a3a6b' : '#e8e8e8'}`, background: v.handzone === 'none' ? '#f0f4ff' : '#f9f9f9', cursor: 'pointer', userSelect: 'none' }}>
           <Radio selected={v.handzone === 'none'} />
           <span style={{ fontSize: '13px', color: '#555' }}>Fără workshop</span>
         </div>
-
         {HANDZONE_OPTIONS.map(opt => (
-          <div
-            key={opt.value}
-            onClick={() => set('handzone', opt.value)}
-            style={{
-              display: 'flex', alignItems: 'flex-start', gap: '12px',
-              padding: '12px 14px', marginBottom: '8px', borderRadius: '10px',
-              border: `1.5px solid ${v.handzone === opt.value ? '#1a3a6b' : '#e8e8e8'}`,
-              background: v.handzone === opt.value ? '#f0f4ff' : '#f9f9f9',
-              cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s',
-            }}
-          >
+          <div key={opt.value} onClick={() => set('handzone', opt.value)} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 14px', marginBottom: '8px', borderRadius: '10px', border: `1.5px solid ${v.handzone === opt.value ? '#1a3a6b' : '#e8e8e8'}`, background: v.handzone === opt.value ? '#f0f4ff' : '#f9f9f9', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}>
             <Radio selected={v.handzone === opt.value} />
             <div>
               <p style={{ margin: 0, fontSize: '13px', fontWeight: '500', color: '#000', lineHeight: 1.4 }}>{opt.label}</p>
@@ -155,21 +124,11 @@ function TicketForm({ ticketType, ticketName, index, value, onChange }: {
 
 function Radio({ selected }: { selected: boolean }) {
   return (
-    <div style={{
-      width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0,
-      border: `2px solid ${selected ? '#1a3a6b' : '#ccc'}`,
-      background: '#fff',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      transition: 'border-color 0.15s', marginTop: '1px',
-    }}>
-      {selected && (
-        <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#1a3a6b' }} />
-      )}
+    <div style={{ width: '18px', height: '18px', borderRadius: '50%', flexShrink: 0, border: `2px solid ${selected ? '#1a3a6b' : '#ccc'}`, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'border-color 0.15s', marginTop: '1px' }}>
+      {selected && <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: '#1a3a6b' }} />}
     </div>
   )
 }
-
-// ─── Main Cart Page ────────────────────────────────────────────────────────────
 
 export default function CartPage() {
   const { cart, removeFromCart, clearCart } = useCart()
@@ -177,6 +136,7 @@ export default function CartPage() {
   const [forms, setForms] = useState<AnyForm[]>([])
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => { setHydrated(true) }, [])
@@ -199,14 +159,70 @@ export default function CartPage() {
     return HANDZONE_OPTIONS.find(o => o.value === val)?.label ?? val
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    await new Promise(r => setTimeout(r, 1500))
-    setLoading(false)
-    setSubmitted(true)
-    clearCart()
+  // ─── Validate all forms before submit ─────────────────────────────────────
+  function validateForms(): string | null {
+    for (let i = 0; i < cart.length; i++) {
+      const item = cart[i]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const f = forms[i] as any
+      const label = `Bilet ${i + 1} (${item.name})`
+
+      if (!f.nume?.trim())    return `${label}: completează Numele`
+      if (!f.prenume?.trim()) return `${label}: completează Prenumele`
+      if (!f.email?.trim() || !f.email.includes('@')) return `${label}: email invalid`
+      if (!f.telefon?.trim()) return `${label}: completează Telefonul`
+      if (!f.adresa?.trim())  return `${label}: completează Adresa`
+
+      if (item.type === 'Student' && !f.carnetId?.trim())
+        return `${label}: completează Nr. Carnet de Student`
+      if (item.type === 'Resident') {
+        if (!f.spital?.trim())       return `${label}: completează Spitalul`
+        if (!f.specialitate?.trim()) return `${label}: completează Specialitatea`
+      }
+      if (item.type === 'Nurse') {
+        if (!f.spital?.trim()) return `${label}: completează Spitalul`
+        if (!f.sectie?.trim()) return `${label}: completează Secția`
+      }
+    }
+    return null
   }
+
+  // ─── Submit — save to Neon DB ──────────────────────────────────────────────
+ const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+ 
+    const validationError = validateForms()
+    if (validationError) {
+      setError(validationError)
+      return
+    }
+ 
+    setLoading(true)
+ 
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cart, forms }),
+      })
+ 
+      const data = await res.json()
+      console.log('Register response:', data) // temporary debug
+ 
+      if (data.ok && data.checkoutUrl) {
+        clearCart()
+        window.location.href = data.checkoutUrl  // ← redirect to MAIB
+      } else {
+        setError(data.error ?? 'Eroare la înregistrare. Încearcă din nou.')
+      }
+    } catch {
+      setError('Eroare de conexiune. Verifică internetul și încearcă din nou.')
+    } finally {
+      setLoading(false)
+    }
+  }
+ 
 
   const pageWrap: React.CSSProperties = {
     fontFamily: '"DM Sans", sans-serif',
@@ -221,7 +237,7 @@ export default function CartPage() {
   if (!hydrated) return (
     <div style={pageWrap}>
       <Navbar cartCount={0} onCartClick={() => router.push('/cart')} />
-      <main style={growMain}><p style={{ color: '#888' }}>Se incarca...</p></main>
+      <main style={growMain}><p style={{ color: '#888' }}>Se încarcă...</p></main>
       <Footer />
     </div>
   )
@@ -231,13 +247,9 @@ export default function CartPage() {
       <Navbar cartCount={0} onCartClick={() => router.push('/cart')} />
       <main style={{ ...growMain, textAlign: 'center' }}>
         <div style={{ fontSize: '56px', marginBottom: '1.25rem' }}>🛒</div>
-        <h1 style={{ fontFamily: '"Playfair Display", serif', fontWeight: '400', fontSize: '28px', marginBottom: '0.75rem', color: '#000' }}>
-          Coșul este gol
-        </h1>
+        <h1 style={{ fontFamily: '"Playfair Display", serif', fontWeight: '400', fontSize: '28px', marginBottom: '0.75rem', color: '#000' }}>Coșul este gol</h1>
         <p style={{ color: '#888', marginBottom: '2rem', fontSize: '15px' }}>Nu ai adăugat niciun bilet încă.</p>
-        <Link href="/shop" style={{ background: '#1a3a6b', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: '500', fontSize: '15px' }}>
-          ← Înapoi la bilete
-        </Link>
+        <Link href="/shop" style={{ background: '#1a3a6b', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: '500', fontSize: '15px' }}>← Înapoi la bilete</Link>
       </main>
       <Footer />
     </div>
@@ -267,6 +279,15 @@ export default function CartPage() {
         </p>
         <h1 style={{ fontFamily: '"Playfair Display", serif', fontSize: '28px', fontWeight: '400', margin: '0 0 2rem', color: '#000' }}>Coșul meu</h1>
 
+        {/* Error banner */}
+        {error && (
+          <div style={{ background: '#fff0f0', border: '1px solid #ffcccc', borderRadius: '8px', padding: '12px 16px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '16px' }}>⚠️</span>
+            <p style={{ margin: 0, fontSize: '14px', color: '#c0392b' }}>{error}</p>
+            <button onClick={() => setError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#c0392b', fontSize: '16px', padding: '2px 6px' }}>✕</button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '2rem', alignItems: 'start' }}>
             <div>
@@ -281,7 +302,6 @@ export default function CartPage() {
               ))}
             </div>
 
-            {/* Order summary */}
             <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '1.5rem', position: 'sticky', top: '80px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: '600', margin: '0 0 1.25rem', color: '#000' }}>Sumar comandă</h2>
 
@@ -293,9 +313,7 @@ export default function CartPage() {
                   </div>
                   {forms[i] && forms[i].handzone !== 'none' && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', paddingLeft: '8px' }}>
-                      <span style={{ fontSize: '11px', color: '#888', maxWidth: '180px', lineHeight: 1.3 }}>
-                        + {getHandzoneLabel(forms[i].handzone as HandzoneOption)}
-                      </span>
+                      <span style={{ fontSize: '11px', color: '#888', maxWidth: '180px', lineHeight: 1.3 }}>+ {getHandzoneLabel(forms[i].handzone as HandzoneOption)}</span>
                       <span style={{ fontSize: '12px', fontWeight: '500', color: '#c9a84c', whiteSpace: 'nowrap', marginLeft: '8px' }}>+1.000 MDL</span>
                     </div>
                   )}
@@ -309,10 +327,10 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} style={{ marginTop: '1.5rem', width: '100%', padding: '14px', background: loading ? '#888' : '#1a3a6b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
-                {loading ? 'Se procesează...' : 'Finalizează înregistrarea →'}
+              <button type="submit" disabled={loading} style={{ marginTop: '1.5rem', width: '100%', padding: '14px', background: loading ? '#888' : '#1a3a6b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}>
+                {loading ? 'Se salvează...' : 'Finalizează înregistrarea →'}
               </button>
-              <p style={{ fontSize: '11px', color: '#aaa', textAlign: 'center', marginTop: '12px' }}>Plata securizată. Vei fi redirecționat către procesatorul de plăți.</p>
+              <p style={{ fontSize: '11px', color: '#aaa', textAlign: 'center', marginTop: '12px' }}>Datele tale sunt salvate securizat.</p>
             </div>
           </div>
         </form>
@@ -321,3 +339,4 @@ export default function CartPage() {
     </div>
   )
 }
+
