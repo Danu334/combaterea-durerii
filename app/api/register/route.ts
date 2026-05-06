@@ -1,8 +1,6 @@
 // app/api/register/route.ts
-// Step 1: Save person + ticket (pending), create MAIB session, return checkoutUrl
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
-import { MaibCheckoutSdk, MaibCheckoutApiRequest } from 'maib-checkout-sdk'
 
 type TicketType = 'Student' | 'Resident' | 'Nurse'
 type HandzoneOption = 'none' | 'botulinum' | 'locoregional' | 'locoregional-periop'
@@ -20,7 +18,15 @@ interface NurseForm    extends BaseForm { spital: string; sectie: string }
 type AnyForm = StudentForm | ResidentForm | NurseForm
 
 const HANDZONE_PRICE = 1000
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL! // e.g. https://yoursite.md
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!
+
+// Ensure phone is in E.164 format: +373XXXXXXXX
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('373')) return `+${digits}`
+  if (digits.startsWith('0'))   return `+373${digits.slice(1)}`
+  return `+373${digits}`
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,7 +37,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Date invalide.' }, { status: 400 })
     }
 
-    // ── 1. Insert all persons + tickets into DB (status = pending) ────────────
+    // ── 1. Insert persons + tickets (pending) ─────────────────────────────
     const ticketIds: number[] = []
     let grandTotal = 0
 
@@ -86,59 +92,67 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── 2. Create MAIB checkout session ───────────────────────────────────────
-    const orderId = ticketIds.join('-')  // e.g. "12-13" for multiple tickets
+    // ── 2. Build MAIB payload ──────────────────────────────────────────────
     const firstForm = forms[0] as unknown as Record<string, string>
-
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
+    const orderId   = `IPC-${ticketIds.join('-')}-${Date.now()}`
+    const ip        = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
     const userAgent = req.headers.get('user-agent') ?? 'Mozilla/5.0'
+    const phone     = normalizePhone(firstForm.telefon.trim())
 
+    // amount must be a float with 2 decimal places
+    const amount = parseFloat(grandTotal.toFixed(2))
+
+    const checkoutData = {
+      amount,
+      currency: 'MDL',
+      orderInfo: {
+        id: orderId,
+        description: `Bilete IPC 2026 (${ticketIds.length})`,
+        date: new Date().toISOString(),
+        orderAmount:      null,
+        orderCurrency:    null,
+        deliveryAmount:   null,
+        deliveryCurrency: null,
+        items: cart.map((item, i) => {
+          const f = forms[i] as unknown as Record<string, string>
+          const price = parseFloat((item.priceNum + (f.handzone !== 'none' ? HANDZONE_PRICE : 0)).toFixed(2))
+          return {
+            externalId:   ticketIds[i].toString(),
+            title:        item.name.substring(0, 100), // max 100 chars
+            amount:       price,
+            currency:     'MDL',
+            quantity:     1,
+            displayOrder: i + 1,
+          }
+        }),
+      },
+      payerInfo: {
+        name:      `${firstForm.prenume.trim()} ${firstForm.nume.trim()}`.substring(0, 100),
+        email:     firstForm.email.trim(),
+        phone,
+        ip,
+        userAgent: userAgent.substring(0, 256),
+      },
+      language:    'ro',
+      callbackUrl: `${BASE_URL}/api/maib-callback`,
+      successUrl:  `${BASE_URL}/payment/success?tickets=${ticketIds.join(',')}`,
+      failUrl:     `${BASE_URL}/payment/fail?tickets=${ticketIds.join(',')}`,
+    }
+
+    console.log('MAIB payload:', JSON.stringify(checkoutData, null, 2))
+
+    // ── 3. Create MAIB session ─────────────────────────────────────────────
+    const { MaibCheckoutSdk, MaibCheckoutApiRequest } = await import('maib-checkout-sdk')
     const maib = MaibCheckoutApiRequest.create(MaibCheckoutSdk.SANDBOX_BASE_URL)
     const auth = await maib.generateToken(
       process.env.MAIB_CLIENT_ID!,
       process.env.MAIB_CLIENT_SECRET!
     )
 
-    const checkoutData = {
-      amount: grandTotal,
-      currency: 'MDL',
-      orderInfo: {
-        id: orderId,
-        description: `Bilete International Pain Congress 2026 (${ticketIds.length} bilet${ticketIds.length > 1 ? 'e' : ''})`,
-        date: new Date().toISOString(),
-        orderAmount: null,
-        orderCurrency: null,
-        deliveryAmount: null,
-        deliveryCurrency: null,
-        items: cart.map((item, i) => {
-          const f = forms[i] as unknown as Record<string, string>
-          const price = item.priceNum + (f.handzone !== 'none' ? HANDZONE_PRICE : 0)
-          return {
-            externalId: ticketIds[i].toString(),
-            title: item.name,
-            amount: price,
-            currency: 'MDL',
-            quantity: 1,
-            displayOrder: i + 1,
-          }
-        }),
-      },
-      payerInfo: {
-        name: `${firstForm.prenume.trim()} ${firstForm.nume.trim()}`,
-        email: firstForm.email.trim(),
-        phone: firstForm.telefon.trim(),
-        ip,
-        userAgent,
-      },
-      language: 'ro',
-      callbackUrl: `${BASE_URL}/api/maib-callback`,
-      successUrl: `${BASE_URL}/payment/success?tickets=${ticketIds.join(',')}`,
-      failUrl:    `${BASE_URL}/payment/fail?tickets=${ticketIds.join(',')}`,
-    }
-
     const session = await maib.checkoutRegister(checkoutData, auth.accessToken)
+    console.log('MAIB session created:', session.checkoutId)
 
-    // ── 3. Store maib_session_id on all tickets so callback can find them ─────
+    // ── 4. Store checkoutId on tickets ─────────────────────────────────────
     await sql`
       UPDATE tickets
       SET maib_session_id = ${session.checkoutId}
