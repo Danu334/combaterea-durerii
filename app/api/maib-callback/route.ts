@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     // ── Signature validation ───────────────────────────────────────────────
     const signatureHeader    = req.headers.get('x-signature') ?? ''
-    const signatureTimestamp = req.headers.get('x-timestamp') ?? ''
+    const signatureTimestamp = req.headers.get('x-signature-timestamp') ?? ''
     const signatureKey       = process.env.MAIB_SIGNATURE_KEY ?? ''
 
     console.log('x-signature:', signatureHeader || 'MISSING')
