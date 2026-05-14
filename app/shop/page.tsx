@@ -1,6 +1,6 @@
 'use client'
-import React, { useState } from 'react'
-import Image from "next/image"
+import React, { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import Footer from '@/components/Footer'
 import Navbar from '@/components/Navbar'
@@ -13,17 +13,24 @@ const products: CartItem[] = [
   { id: 3, name: 'Nurse ticket',    price: '1.500,00 MDL', priceNum: 1500, type: 'Nurse',    typeColor: '#c9a84c' },
 ]
 
+function useIsMobile() {
+  // Default true = mobile-first: single column renders immediately, no flash
+  const [isMobile, setIsMobile] = useState(true)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 700px)')
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
+
 function CertificatePreview({ type, typeColor }: { type: string; typeColor: string }) {
   return (
     <div style={{
-      background: '#f5f4ef',
-      width: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '24px 32px 20px 24px',
-      position: 'relative',
-      boxSizing: 'border-box',
+      background: '#f5f4ef', width: '100%', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', padding: '24px 32px 20px 24px', position: 'relative', boxSizing: 'border-box',
     }}>
       <div style={{ marginBottom: '12px', borderRadius: '50%', overflow: 'hidden', width: '80px', height: '80px', flexShrink: 0 }}>
         <Image src="/images/logo.jpg" alt="no pain logo" width={80} height={80} priority style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -42,9 +49,7 @@ function CertificatePreview({ type, typeColor }: { type: string; typeColor: stri
       <div style={{ width: '55%', height: '0.5px', background: typeColor, margin: '0 0 4px' }} />
       <p style={{ fontSize: '9px', color: typeColor, margin: '0 0 4px', fontFamily: 'Georgia, serif' }}>20th Anniversary Edition</p>
       <div style={{ width: '55%', height: '0.5px', background: typeColor, margin: '0 0 12px' }} />
-      <p style={{ fontSize: '8px', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#999', margin: '0 0 20px' }}>
-        Participant Name
-      </p>
+      <p style={{ fontSize: '8px', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#999', margin: '0 0 20px' }}>Participant Name</p>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ fontSize: '8px', color: '#555', lineHeight: 1.7 }}>
           <p style={{ margin: 0 }}>01-03 Octombrie 2026</p>
@@ -85,6 +90,7 @@ export default function ShopPage() {
   const { cart, addToCart } = useCart()
   const [added, setAdded] = useState<Record<number, boolean>>({})
   const router = useRouter()
+  const isMobile = useIsMobile()
 
   const addToCartHandler = (product: CartItem) => {
     addToCart(product)
@@ -93,50 +99,40 @@ export default function ShopPage() {
   }
 
   return (
-    <div style={{
-      fontFamily: '"DM Sans", sans-serif',
-      background: '#fff',
-      display: 'flex',
-      flexDirection: 'column',
-      minHeight: '100vh',        /* fallback */
-    }}>
+    <div style={{ fontFamily: '"DM Sans", sans-serif', background: '#fff', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar cartCount={cart.length} onCartClick={() => router.push('/cart')} />
 
-      <main style={{ flex: 1, padding: '0 2rem 3rem' }}>
+      <main style={{ flex: 1, padding: isMobile ? '0 1rem 3rem' : '0 2rem 3rem' }}>
         <p style={{ fontSize: '13px', color: '#888', padding: '1rem 0 0', margin: 0 }}>
           <Link href="https://nopainmoldova.org/" style={{ color: '#1a3a6b', textDecoration: 'none' }}>Home</Link>
           {' / '}Biletele
         </p>
-        <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: '22px', fontWeight: '400', margin: '0.5rem 0 0', color: '#000' }}>
+        <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: isMobile ? '20px' : '22px', fontWeight: '400', margin: '0.5rem 0 0', color: '#000' }}>
           Biletele
         </h1>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid #eee', marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid #eee', marginBottom: isMobile ? '1.25rem' : '2rem' }}>
           <span style={{ fontSize: '13px', color: '#888' }}>Showing all 3 results</span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', paddingTop: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', maxWidth: '900px', width: '100%' }}>
+        {isMobile ? (
+          /* ── MOBILE: one full-width card per row ── */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
             {products.map(product => (
-              <div
-                key={product.id}
-                style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e8e8e8', borderRadius: '12px', transition: 'box-shadow 0.2s', background: '#fff' }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.09)')}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
-              >
-                <div style={{ borderRadius: '11px 11px 0 0', overflow: 'hidden' }}>
-                  <CertificatePreview type={product.type} typeColor={product.typeColor} />
-                </div>
-                <div style={{ padding: '1.1rem 1rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', borderTop: '1px solid #f0f0f0' }}>
-                  <h2 style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 6px', lineHeight: 1.4, color: '#000' }}>{product.name}</h2>
-                  <p style={{ fontSize: '14px', color: '#6854ed', fontWeight: '600', margin: '0 0 14px' }}>{product.price}</p>
+              <div key={product.id} style={{ border: '1px solid #e8e8e8', borderRadius: '14px', background: '#fff', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                <CertificatePreview type={product.type} typeColor={product.typeColor} />
+                <div style={{ padding: '1rem 1.1rem 1.1rem', borderTop: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                  <div>
+                    <h2 style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 3px', color: '#000' }}>{product.name}</h2>
+                    <p style={{ fontSize: '15px', color: '#6854ed', fontWeight: '700', margin: 0 }}>{product.price}</p>
+                  </div>
                   <button
                     onClick={() => addToCartHandler(product)}
                     style={{
-                      marginTop: 'auto', padding: '11px 0',
+                      padding: '11px 18px', flexShrink: 0,
                       background: added[product.id] ? '#2a6b3a' : '#1a1a1a',
-                      color: '#fff', border: 'none', borderRadius: '8px',
-                      fontSize: '14px', fontWeight: '500', cursor: 'pointer',
-                      transition: 'background 0.2s', fontFamily: 'inherit', width: '100%',
+                      color: '#fff', border: 'none', borderRadius: '10px',
+                      fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                      transition: 'background 0.2s', fontFamily: 'inherit', whiteSpace: 'nowrap',
                     }}
                   >
                     {added[product.id] ? '✓ Adăugat' : 'Adaugă în coș'}
@@ -145,7 +141,37 @@ export default function ShopPage() {
               </div>
             ))}
           </div>
-        </div>
+        ) : (
+          /* ── DESKTOP: 3-column grid ── */
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', maxWidth: '900px', margin: '1rem auto 0', width: '100%' }}>
+            {products.map(product => (
+              <div
+                key={product.id}
+                style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e8e8e8', borderRadius: '12px', background: '#fff', overflow: 'hidden', transition: 'box-shadow 0.2s' }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.09)')}
+                onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+              >
+                <CertificatePreview type={product.type} typeColor={product.typeColor} />
+                <div style={{ padding: '1.1rem 1rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', borderTop: '1px solid #f0f0f0' }}>
+                  <h2 style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 6px', lineHeight: 1.4, color: '#000' }}>{product.name}</h2>
+                  <p style={{ fontSize: '14px', color: '#6854ed', fontWeight: '600', margin: '0 0 14px' }}>{product.price}</p>
+                  <button
+                    onClick={() => addToCartHandler(product)}
+                    style={{
+                      marginTop: 'auto', padding: '11px 0', width: '100%',
+                      background: added[product.id] ? '#2a6b3a' : '#1a1a1a',
+                      color: '#fff', border: 'none', borderRadius: '8px',
+                      fontSize: '14px', fontWeight: '500', cursor: 'pointer',
+                      transition: 'background 0.2s', fontFamily: 'inherit',
+                    }}
+                  >
+                    {added[product.id] ? '✓ Adăugat' : 'Adaugă în coș'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
       <Footer />
