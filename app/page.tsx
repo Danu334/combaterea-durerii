@@ -89,8 +89,6 @@ export default function ShopPage() {
   const { cart, addToCart } = useCart()
   const [added, setAdded] = useState<Record<number, boolean>>({})
   const router = useRouter()
-  const isMobile = useIsMobile()
-
   const addToCartHandler = (product: CartItem) => {
     addToCart(product)
     setAdded(prev => ({ ...prev, [product.id]: true }))
@@ -101,83 +99,67 @@ export default function ShopPage() {
     <div style={{ fontFamily: '"DM Sans", sans-serif', background: '#fff', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navbar cartCount={cart.length} onCartClick={() => router.push('/cart')} />
 
-      <main style={{ flex: 1, padding: isMobile ? '0 1rem 3rem' : '0 2rem 3rem' }}>
+      <main style={{ flex: 1, padding: '0 1rem 3rem' }}>
         <p style={{ fontSize: '13px', color: '#888', padding: '1rem 0 0', margin: 0 }}>
           <Link href="https://nopainmoldova.org/" style={{ color: '#1a3a6b', textDecoration: 'none' }}>Home</Link>
           {' / '}Biletele
         </p>
-        <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: isMobile ? '20px' : '22px', fontWeight: '400', margin: '0.5rem 0 0', color: '#000' }}>
+        <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: '20px', fontWeight: '400', margin: '0.5rem 0 0', color: '#000' }}>
           Biletele
         </h1>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid #eee', marginBottom: isMobile ? '1.25rem' : '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid #eee', marginBottom: '1.5rem' }}>
           <span style={{ fontSize: '13px', color: '#888' }}>Showing all 3 results</span>
         </div>
 
-        {isMobile ? (
-          /* ── MOBILE: one full-width card per row ─────────────────────── */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {products.map(product => (
-              <div key={product.id} style={{
-                border: '1px solid #e8e8e8', borderRadius: '14px', background: '#fff',
-                overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-              }}>
-                <CertificatePreview type={product.type} typeColor={product.typeColor} />
-                <div style={{ padding: '1rem 1.1rem 1.1rem', borderTop: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                  <div>
-                    <h2 style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 3px', color: '#000' }}>{product.name}</h2>
-                    <p style={{ fontSize: '15px', color: '#6854ed', fontWeight: '700', margin: 0 }}>{product.price}</p>
-                  </div>
-                  <button
-                    onClick={() => addToCartHandler(product)}
-                    style={{
-                      padding: '12px 20px', flexShrink: 0,
-                      background: added[product.id] ? '#2a6b3a' : '#1a1a1a',
-                      color: '#fff', border: 'none', borderRadius: '10px',
-                      fontSize: '14px', fontWeight: '600', cursor: 'pointer',
-                      transition: 'background 0.2s', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {added[product.id] ? '✓ Adăugat' : 'Adaugă în coș'}
-                  </button>
+        {/* ── CSS-native responsive grid: 1 col on mobile, 3 on desktop ── */}
+        <style>{`
+          .ticket-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+            width: 100%;
+          }
+          @media (min-width: 701px) {
+            .ticket-grid {
+              grid-template-columns: repeat(3, 1fr);
+              gap: 2rem;
+              max-width: 900px;
+              margin: 0 auto;
+              padding-top: 1rem;
+            }
+          }
+        `}</style>
+
+        <div className="ticket-grid">
+          {products.map(product => (
+            <div
+              key={product.id}
+              style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e8e8e8', borderRadius: '14px', background: '#fff', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', transition: 'box-shadow 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.09)')}
+              onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.05)')}
+            >
+              <CertificatePreview type={product.type} typeColor={product.typeColor} />
+              <div style={{ padding: '1rem 1.1rem 1.1rem', borderTop: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                <div>
+                  <h2 style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 3px', color: '#000' }}>{product.name}</h2>
+                  <p style={{ fontSize: '15px', color: '#6854ed', fontWeight: '700', margin: 0 }}>{product.price}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          /* ── DESKTOP: 3-column grid ──────────────────────────────────── */
-          <div style={{ display: 'flex', justifyContent: 'center', width: '100%', paddingTop: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', maxWidth: '900px', width: '100%' }}>
-              {products.map(product => (
-                <div
-                  key={product.id}
-                  style={{ display: 'flex', flexDirection: 'column', border: '1px solid #e8e8e8', borderRadius: '12px', transition: 'box-shadow 0.2s', background: '#fff' }}
-                  onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.09)')}
-                  onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+                <button
+                  onClick={() => addToCartHandler(product)}
+                  style={{
+                    padding: '11px 18px', flexShrink: 0,
+                    background: added[product.id] ? '#2a6b3a' : '#1a1a1a',
+                    color: '#fff', border: 'none', borderRadius: '10px',
+                    fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                    transition: 'background 0.2s', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                  }}
                 >
-                  <div style={{ borderRadius: '11px 11px 0 0', overflow: 'hidden' }}>
-                    <CertificatePreview type={product.type} typeColor={product.typeColor} />
-                  </div>
-                  <div style={{ padding: '1.1rem 1rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', borderTop: '1px solid #f0f0f0' }}>
-                    <h2 style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 6px', lineHeight: 1.4, color: '#000' }}>{product.name}</h2>
-                    <p style={{ fontSize: '14px', color: '#6854ed', fontWeight: '600', margin: '0 0 14px' }}>{product.price}</p>
-                    <button
-                      onClick={() => addToCartHandler(product)}
-                      style={{
-                        marginTop: 'auto', padding: '11px 0',
-                        background: added[product.id] ? '#2a6b3a' : '#1a1a1a',
-                        color: '#fff', border: 'none', borderRadius: '8px',
-                        fontSize: '14px', fontWeight: '500', cursor: 'pointer',
-                        transition: 'background 0.2s', fontFamily: 'inherit', width: '100%',
-                      }}
-                    >
-                      {added[product.id] ? '✓ Adăugat' : 'Adaugă în coș'}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  {added[product.id] ? '✓ Adăugat' : 'Adaugă în coș'}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          ))}
+        </div>
       </main>
 
       <Footer />
