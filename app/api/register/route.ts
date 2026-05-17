@@ -23,7 +23,6 @@ type AnyForm = StudentForm | ResidentForm | NurseForm
 const HANDZONE_PRICE = 1000
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!
 
-// Ensure phone is in E.164 format: +373XXXXXXXX
 function normalizePhone(raw: string): string {
   const digits = raw.replace(/\D/g, '')
   if (digits.startsWith('373')) return `+${digits}`
@@ -31,8 +30,18 @@ function normalizePhone(raw: string): string {
   return `+373${digits}`
 }
 
+// Run once per cold start to ensure column exists
+let columnEnsured = false
+async function ensureSatelliteColumn() {
+  if (columnEnsured) return
+  await sql`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS satellite_workshop TEXT NOT NULL DEFAULT 'none'`
+  columnEnsured = true
+}
+
 export async function POST(req: NextRequest) {
   try {
+    await ensureSatelliteColumn()
+
     const body = await req.json()
     const { cart, forms }: { cart: CartItem[]; forms: AnyForm[] } = body
 
@@ -40,18 +49,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Date invalide.' }, { status: 400 })
     }
 
-    // ── 1. Insert persons + tickets (pending) ─────────────────────────────
     const ticketIds: number[] = []
     let grandTotal = 0
 
     for (let i = 0; i < cart.length; i++) {
       const item = cart[i]
       const f = forms[i] as unknown as Record<string, string>
-
-      // Safely read handzone — default to 'none' if missing
       const handzone: HandzoneOption = (f.handzone as HandzoneOption) || 'none'
       const satellite: SatelliteOption = (f.satellite as SatelliteOption) || 'none'
-
       const totalPrice = item.priceNum + (handzone !== 'none' ? HANDZONE_PRICE : 0)
       grandTotal += totalPrice
 
@@ -100,14 +105,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── 2. Build MAIB payload ──────────────────────────────────────────────
     const firstForm = forms[0] as unknown as Record<string, string>
     const orderId   = `IPC-${ticketIds.join('-')}-${Date.now()}`
     const ip        = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
     const userAgent = req.headers.get('user-agent') ?? 'Mozilla/5.0'
     const phone     = normalizePhone(firstForm.telefon.trim())
-
-    const amount = parseFloat(grandTotal.toFixed(2))
+    const amount    = parseFloat(grandTotal.toFixed(2))
 
     const checkoutData = {
       amount,
@@ -116,32 +119,29 @@ export async function POST(req: NextRequest) {
         id: orderId,
         description: `Inregistrare IPC 2026 (${ticketIds.length})`,
         date: new Date().toISOString(),
-        orderAmount:      null,
-        orderCurrency:    null,
-        deliveryAmount:   null,
-        deliveryCurrency: null,
+        orderAmount: null, orderCurrency: null, deliveryAmount: null, deliveryCurrency: null,
         items: cart.map((item, i) => {
           const f = forms[i] as unknown as Record<string, string>
           const handzone: HandzoneOption = (f.handzone as HandzoneOption) || 'none'
           const price = parseFloat((item.priceNum + (handzone !== 'none' ? HANDZONE_PRICE : 0)).toFixed(2))
           return {
-            externalId:   ticketIds[i].toString(),
-            title:        item.name.substring(0, 100),
-            amount:       price,
-            currency:     'MDL',
-            quantity:     1,
+            externalId: ticketIds[i].toString(),
+            title: item.name.substring(0, 100),
+            amount: price,
+            currency: 'MDL',
+            quantity: 1,
             displayOrder: i + 1,
           }
         }),
       },
       payerInfo: {
-        name:      `${firstForm.prenume.trim()} ${firstForm.nume.trim()}`.substring(0, 100),
-        email:     firstForm.email.trim(),
+        name: `${firstForm.prenume.trim()} ${firstForm.nume.trim()}`.substring(0, 100),
+        email: firstForm.email.trim(),
         phone,
         ip,
         userAgent: userAgent.substring(0, 256),
       },
-      language:    'ro',
+      language: 'ro',
       callbackUrl: `${BASE_URL}/api/maib-callback`,
       successUrl:  `${BASE_URL}/payment/success?tickets=${ticketIds.join(',')}`,
       failUrl:     `${BASE_URL}/payment/fail?tickets=${ticketIds.join(',')}`,
@@ -149,7 +149,6 @@ export async function POST(req: NextRequest) {
 
     console.log('MAIB payload:', JSON.stringify(checkoutData, null, 2))
 
-    // ── 3. Create MAIB session ─────────────────────────────────────────────
     const { MaibCheckoutSdk, MaibCheckoutApiRequest } = await import('maib-checkout-sdk')
     const maib = MaibCheckoutApiRequest.create(MaibCheckoutSdk.SANDBOX_BASE_URL)
     const auth = await maib.generateToken(
@@ -160,7 +159,6 @@ export async function POST(req: NextRequest) {
     const session = await maib.checkoutRegister(checkoutData, auth.accessToken)
     console.log('MAIB session created:', session.checkoutId)
 
-    // ── 4. Store checkoutId on tickets ─────────────────────────────────────
     await sql`
       UPDATE tickets
       SET maib_session_id = ${session.checkoutId}
