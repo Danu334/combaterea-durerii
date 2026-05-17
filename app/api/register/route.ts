@@ -99,8 +99,15 @@ export async function POST(req: NextRequest) {
     )
 
     // This throws if MAIB fails — DB stays clean
-    const session = await maib.checkoutRegister(checkoutData, auth.accessToken)
-    console.log('MAIB session created:', session.checkoutId)
+    let session
+    try {
+      session = await maib.checkoutRegister(checkoutData, auth.accessToken)
+      console.log('MAIB session created:', session.checkoutId)
+    } catch (maibErr: unknown) {
+      const e = maibErr as { response?: { data?: unknown } }
+      console.error('MAIB error details:', JSON.stringify(e?.response?.data, null, 2))
+      throw maibErr
+    }
 
     // ── 3. MAIB succeeded → now write to DB ───────────────────────────────
     const ticketIds: number[] = []
