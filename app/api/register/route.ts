@@ -64,12 +64,12 @@ export async function POST(req: NextRequest) {
       currency: 'MDL',
       orderInfo: {
         id: tempOrderId,
-        description: `Inregistrare IPC 2026 (${cart.length})`,
+        description: 'Inregistrare IPC 2026',
         date: new Date().toISOString(),
         
         items: itemData.map(({ item, totalPrice }, i) => ({
           externalId:   String(i + 1),
-          title:        item.name.substring(0, 100),
+          title:        item.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').substring(0, 100),
           amount:       parseFloat(totalPrice.toFixed(2)),
           currency:     'MDL',
           quantity:     1,
