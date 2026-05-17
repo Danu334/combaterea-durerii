@@ -66,9 +66,9 @@ export async function POST(req: NextRequest) {
         id: tempOrderId,
         description: `Inregistrare IPC 2026 (${cart.length})`,
         date: new Date().toISOString(),
-        orderAmount: null, orderCurrency: null, deliveryAmount: null, deliveryCurrency: null,
-        items: itemData.map(({ item, handzone, totalPrice }, i) => ({
-          externalId:   `tmp-${i}`,
+        
+        items: itemData.map(({ item, totalPrice }, i) => ({
+          externalId:   String(i + 1),
           title:        item.name.substring(0, 100),
           amount:       parseFloat(totalPrice.toFixed(2)),
           currency:     'MDL',
