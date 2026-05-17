@@ -8,13 +8,18 @@ import { useCart, CartItem } from '@/context/CartContext'
 import { useRouter } from 'next/navigation'
 
 const products: CartItem[] = [
-  { id: 1, name: 'Student ticket',  price: '1.500,00 MDL', priceNum: 1500, type: 'Student',  typeColor: '#c9a84c' },
-  { id: 2, name: 'Resident ticket', price: '2.000,00 MDL', priceNum: 2000, type: 'Resident', typeColor: '#c9a84c' },
-  { id: 3, name: 'Nurse ticket',    price: '1.500,00 MDL', priceNum: 1500, type: 'Nurse',    typeColor: '#c9a84c' },
+  { id: 1, name: 'Înregistrare Student',  price: '1.500,00 MDL', priceNum: 1500, type: 'Student',  typeColor: '#c9a84c' },
+  { id: 2, name: 'Înregistrare Standard', price: '2.000,00 MDL', priceNum: 2000, type: 'Resident', typeColor: '#c9a84c' },
+  { id: 3, name: 'Înregistrare Nurse',    price: '1.500,00 MDL', priceNum: 1500, type: 'Nurse',    typeColor: '#c9a84c' },
 ]
 
+const descriptions: Record<number, string> = {
+  1: 'Destinată studenților. Include acces la sesiunile științifice ale congresului, coffee break-uri și la deschiderea oficială a Congresului Aniversar.',
+  2: 'Destinată medicilor specialiști, medicilor rezidenti și altor profesioniști din domeniul sănătății. Include acces complet la sesiunile științifice ale congresului, coffee break-uri și la deschiderea oficială a Congresului Aniversar.',
+  3: 'Destinată asistenților medicali. Include acces la sesiunile științifice ale congresului, coffee break-uri și la deschiderea oficială a Congresului Aniversar.',
+}
+
 function useIsMobile() {
-  // Default true = mobile-first: single column renders immediately, no flash
   const [isMobile, setIsMobile] = useState(true)
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 700px)')
@@ -36,7 +41,7 @@ function CertificatePreview({ type, typeColor }: { type: string; typeColor: stri
         <Image src="/images/logo.jpg" alt="no pain logo" width={80} height={80} priority style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       </div>
       <p style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: '12px', fontWeight: '700', color: '#1a3a6b', textAlign: 'center', margin: '0 0 8px', lineHeight: 1.3 }}>
-        International Pain Congress 2026
+        Aniversary Pain Congress 2026
       </p>
       <div style={{ display: 'flex', gap: '5px', marginBottom: '10px' }}>
         {[...Array(5)].map((_, i) => (
@@ -54,8 +59,7 @@ function CertificatePreview({ type, typeColor }: { type: string; typeColor: stri
         <div style={{ fontSize: '8px', color: '#555', lineHeight: 1.7 }}>
           <p style={{ margin: 0 }}>01-03 Octombrie 2026</p>
           <p style={{ margin: 0 }}>Chișinău, Republica Moldova</p>
-          <p style={{ margin: 0 }}>Radisson Blu Leogrand</p>
-          <p style={{ margin: 0 }}>Strada Mitropolit Varlaam 77</p>
+          <p style={{ margin: 0 }}>Digital Park, Strada Mihai Viteazul 15</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
           <svg width="48" height="48" viewBox="0 0 44 44" style={{ background: '#fff', borderRadius: '3px', padding: '2px' }}>
@@ -86,7 +90,7 @@ function CertificatePreview({ type, typeColor }: { type: string; typeColor: stri
   )
 }
 
-export default function ShopPage() {
+export default function RegistrationPage() {
   const { cart, addToCart } = useCart()
   const [added, setAdded] = useState<Record<number, boolean>>({})
   const router = useRouter()
@@ -105,44 +109,45 @@ export default function ShopPage() {
       <main style={{ flex: 1, padding: isMobile ? '0 1rem 3rem' : '0 2rem 3rem' }}>
         <p style={{ fontSize: '13px', color: '#888', padding: '1rem 0 0', margin: 0 }}>
           <Link href="https://nopainmoldova.org/" style={{ color: '#1a3a6b', textDecoration: 'none' }}>Home</Link>
-          {' / '}Biletele
+          {' / '}Înregistrare
         </p>
         <h1 style={{ fontFamily: '"Playfair Display", Georgia, serif', fontSize: isMobile ? '20px' : '22px', fontWeight: '400', margin: '0.5rem 0 0', color: '#000' }}>
-          Biletele
+          Înregistrare
         </h1>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid #eee', marginBottom: isMobile ? '1.25rem' : '2rem' }}>
           <span style={{ fontSize: '13px', color: '#888' }}>Showing all 3 results</span>
         </div>
 
         {isMobile ? (
-          /* ── MOBILE: one full-width card per row ── */
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
             {products.map(product => (
               <div key={product.id} style={{ border: '1px solid #e8e8e8', borderRadius: '14px', background: '#fff', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
                 <CertificatePreview type={product.type} typeColor={product.typeColor} />
-                <div style={{ padding: '1rem 1.1rem 1.1rem', borderTop: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                  <div>
-                    <h2 style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 3px', color: '#000' }}>{product.name}</h2>
-                    <p style={{ fontSize: '15px', color: '#6854ed', fontWeight: '700', margin: 0 }}>{product.price}</p>
+                <div style={{ padding: '1rem 1.1rem 1.1rem', borderTop: '1px solid #f0f0f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
+                    <div>
+                      <h2 style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 3px', color: '#000' }}>{product.name}</h2>
+                      <p style={{ fontSize: '15px', color: '#6854ed', fontWeight: '700', margin: 0 }}>{product.price}</p>
+                    </div>
+                    <button
+                      onClick={() => addToCartHandler(product)}
+                      style={{
+                        padding: '11px 18px', flexShrink: 0,
+                        background: added[product.id] ? '#2a6b3a' : '#1a1a1a',
+                        color: '#fff', border: 'none', borderRadius: '10px',
+                        fontSize: '14px', fontWeight: '600', cursor: 'pointer',
+                        transition: 'background 0.2s', fontFamily: 'inherit', whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {added[product.id] ? '✓ Adăugat' : 'Înregistrează-te'}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => addToCartHandler(product)}
-                    style={{
-                      padding: '11px 18px', flexShrink: 0,
-                      background: added[product.id] ? '#2a6b3a' : '#1a1a1a',
-                      color: '#fff', border: 'none', borderRadius: '10px',
-                      fontSize: '14px', fontWeight: '600', cursor: 'pointer',
-                      transition: 'background 0.2s', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {added[product.id] ? '✓ Adăugat' : 'Adaugă în coș'}
-                  </button>
+                  <p style={{ fontSize: '12px', color: '#777', margin: 0, lineHeight: 1.5 }}>{descriptions[product.id]}</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          /* ── DESKTOP: 3-column grid ── */
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', maxWidth: '900px', margin: '1rem auto 0', width: '100%' }}>
             {products.map(product => (
               <div
@@ -154,7 +159,8 @@ export default function ShopPage() {
                 <CertificatePreview type={product.type} typeColor={product.typeColor} />
                 <div style={{ padding: '1.1rem 1rem', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column', borderTop: '1px solid #f0f0f0' }}>
                   <h2 style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 6px', lineHeight: 1.4, color: '#000' }}>{product.name}</h2>
-                  <p style={{ fontSize: '14px', color: '#6854ed', fontWeight: '600', margin: '0 0 14px' }}>{product.price}</p>
+                  <p style={{ fontSize: '14px', color: '#6854ed', fontWeight: '600', margin: '0 0 10px' }}>{product.price}</p>
+                  <p style={{ fontSize: '12px', color: '#777', margin: '0 0 14px', lineHeight: 1.5, textAlign: 'left' }}>{descriptions[product.id]}</p>
                   <button
                     onClick={() => addToCartHandler(product)}
                     style={{
@@ -165,7 +171,7 @@ export default function ShopPage() {
                       transition: 'background 0.2s', fontFamily: 'inherit',
                     }}
                   >
-                    {added[product.id] ? '✓ Adăugat' : 'Adaugă în coș'}
+                    {added[product.id] ? '✓ Adăugat' : 'Înregistrează-te'}
                   </button>
                 </div>
               </div>

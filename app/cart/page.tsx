@@ -6,11 +6,33 @@ import Footer from '@/components/Footer'
 import Navbar from '@/components/Navbar'
 import { useCart, TicketType } from '@/context/CartContext'
 
+// ─── Satellite workshop capacity (tracked in localStorage for demo; in prod use DB) ───
+const SATELLITE_CAPACITY = 30
+const SATELLITE_WORKSHOPS = [
+  {
+    id: 'y2y',
+    label: 'Young to Young',
+    description: 'Y2Y este un program pentru tineri profesioniști, axat pe colaborare, explorarea tehnologiilor și metodologiilor moderne, înțelegerea bazelor cercetării și dezvoltarea abilităților de orientare în spațiul informațional actual.',
+    location: 'Digital Park, Technology Hall',
+    date: '2 octombrie, 14:00–17:00',
+  },
+  {
+    id: 'imagistica',
+    label: 'Bazele Imagisticii pentru Kinetoterapeuți',
+    description: 'Workshop dedicat kinetoterapeuților, axat pe înțelegerea și aplicarea bazelor imagisticii medicale pentru o evaluare mai precisă și o planificare eficientă a intervențiilor terapeutice.',
+    location: 'TBA',
+    date: 'TBA',
+  },
+]
+
 type HandzoneOption = 'none' | 'botulinum' | 'locoregional' | 'locoregional-periop'
+type SatelliteOption = 'none' | 'y2y' | 'imagistica'
 
 interface BaseForm {
   email: string; nume: string; prenume: string
-  adresa: string; telefon: string; handzone: HandzoneOption
+  adresa: string; telefon: string
+  handzone: HandzoneOption
+  satellite: SatelliteOption
 }
 interface StudentForm extends BaseForm { carnetId: string }
 interface DoctorForm  extends BaseForm { spital: string; specialitate: string }
@@ -19,14 +41,35 @@ type AnyForm = StudentForm | DoctorForm | NurseForm
 
 const HANDZONE_PRICE = 1000
 
-const HANDZONE_OPTIONS: { value: HandzoneOption; label: string }[] = [
-  { value: 'botulinum',           label: 'Workshop – Botulinum Toxin in Pain Management' },
-  { value: 'locoregional',        label: 'Workshop – Locoregional techniques' },
-  { value: 'locoregional-periop', label: 'Workshop – Locoregional techniques for perioperative pain management' },
+const HANDZONE_OPTIONS: { value: HandzoneOption; label: string; description: string; speaker: string; location: string; date: string }[] = [
+  {
+    value: 'botulinum',
+    label: 'Botulinum Toxin in Pain Management',
+    description: 'Workshop practic dedicat utilizării toxinei botulinice în managementul durerii, cu accent pe indicații clinice, tehnici de administrare și abordări moderne intervenționale.',
+    speaker: 'Nadyi Segin',
+    location: 'Medpark Hospital',
+    date: '1 octombrie, 09:00–17:00',
+  },
+  {
+    value: 'locoregional-periop',
+    label: 'Locoregional Techniques for Perioperative Pain Management',
+    description: 'Workshop practic axat pe tehnici loco-regionale moderne utilizate în managementul durerii perioperatorii, incluzând principii ecoghidate și aplicații clinice actuale.',
+    speaker: 'Hande Gurbuz (Turcia)',
+    location: 'Medpark Hospital',
+    date: '1 octombrie, 09:00–17:00',
+  },
+  {
+    value: 'locoregional',
+    label: 'Locoregional Techniques',
+    description: 'Sesiune practică dedicată tehnicilor loco-regionale, orientată spre dezvoltarea abilităților practice și familiarizarea cu abordările contemporane în anestezia regională.',
+    speaker: 'TBA',
+    location: 'Medpark Hospital',
+    date: '1 octombrie, 09:00–17:00',
+  },
 ]
 
 function defaultForm(type: TicketType): AnyForm {
-  const base: BaseForm = { email: '', nume: '', prenume: '', adresa: '', telefon: '', handzone: 'none' }
+  const base: BaseForm = { email: '', nume: '', prenume: '', adresa: '', telefon: '', handzone: 'none', satellite: 'none' }
   if (type === 'Student')  return { ...base, carnetId: '' }
   if (type === 'Resident') return { ...base, spital: '', specialitate: '' }
   return { ...base, spital: '', sectie: '' }
@@ -54,6 +97,17 @@ function useIsMobile() {
   return isMobile
 }
 
+// Track satellite registrations in sessionStorage (per session).
+// In production this should be a DB query.
+function getSatelliteCount(id: string): number {
+  if (typeof window === 'undefined') return 0
+  return parseInt(sessionStorage.getItem(`satellite_count_${id}`) || '0', 10)
+}
+function incrementSatelliteCount(id: string) {
+  const current = getSatelliteCount(id)
+  sessionStorage.setItem(`satellite_count_${id}`, String(current + 1))
+}
+
 function Field({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   const [focused, setFocused] = useState(false)
   return (
@@ -74,9 +128,18 @@ function Radio({ selected }: { selected: boolean }) {
   )
 }
 
-function TicketForm({ ticketType, ticketName, index, value, onChange, isMobile }: {
+function Checkbox({ checked }: { checked: boolean }) {
+  return (
+    <div style={{ width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0, border: `2px solid ${checked ? '#1a3a6b' : '#ccc'}`, background: checked ? '#1a3a6b' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', marginTop: '1px' }}>
+      {checked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+    </div>
+  )
+}
+
+function TicketForm({ ticketType, ticketName, index, value, onChange, isMobile, satelliteCounts }: {
   ticketType: TicketType; ticketName: string; index: number
   value: AnyForm; onChange: (v: AnyForm) => void; isMobile: boolean
+  satelliteCounts: Record<string, number>
 }) {
   const set = (field: string, val: string) => onChange({ ...value, [field]: val } as AnyForm)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,6 +148,8 @@ function TicketForm({ ticketType, ticketName, index, value, onChange, isMobile }
   const twoCol: React.CSSProperties = isMobile
     ? { display: 'grid', gridTemplateColumns: '1fr', gap: 0 }
     : { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }
+
+  const isStudent = ticketType === 'Student'
 
   return (
     <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: isMobile ? '1.1rem' : '2rem', marginBottom: '1.25rem' }}>
@@ -124,28 +189,92 @@ function TicketForm({ ticketType, ticketName, index, value, onChange, isMobile }
         </div>
       )}
 
-      {/* Handzone */}
-      <div style={{ marginTop: '8px' }}>
+      {/* ── Satellite Workshops (free, max 30 spots, shown before paid) ── */}
+      <div style={{ marginBottom: '20px' }}>
         <p style={{ ...labelStyle, marginBottom: '10px' }}>
-          Adaugă un Handzone Workshop
-          <span style={{ marginLeft: '8px', background: '#c9a84c', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '20px', fontWeight: '500', textTransform: 'none', letterSpacing: 0 }}>
-            +1.000 MDL / workshop
+          Workshopuri Satellite
+          <span style={{ marginLeft: '8px', background: '#2a6b3a', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '20px', fontWeight: '500', textTransform: 'none', letterSpacing: 0 }}>
+            Gratuit
           </span>
         </p>
-        <div onClick={() => set('handzone', 'none')} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', marginBottom: '8px', borderRadius: '10px', border: `1.5px solid ${v.handzone === 'none' ? '#1a3a6b' : '#e8e8e8'}`, background: v.handzone === 'none' ? '#f0f4ff' : '#f9f9f9', cursor: 'pointer', userSelect: 'none' }}>
-          <Radio selected={v.handzone === 'none'} />
-          <span style={{ fontSize: '13px', color: '#555' }}>Fără workshop</span>
+        <p style={{ fontSize: '12px', color: '#888', margin: '0 0 10px', lineHeight: 1.4 }}>
+          Selectează un workshop satellite (locuri limitate – max. {SATELLITE_CAPACITY} persoane).
+        </p>
+
+        {/* "None" option */}
+        <div onClick={() => set('satellite', 'none')} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', marginBottom: '8px', borderRadius: '10px', border: `1.5px solid ${v.satellite === 'none' ? '#1a3a6b' : '#e8e8e8'}`, background: v.satellite === 'none' ? '#f0f4ff' : '#f9f9f9', cursor: 'pointer', userSelect: 'none' }}>
+          <Radio selected={v.satellite === 'none'} />
+          <span style={{ fontSize: '13px', color: '#555' }}>Fără workshop satellite</span>
         </div>
-        {HANDZONE_OPTIONS.map(opt => (
-          <div key={opt.value} onClick={() => set('handzone', opt.value)} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 14px', marginBottom: '8px', borderRadius: '10px', border: `1.5px solid ${v.handzone === opt.value ? '#1a3a6b' : '#e8e8e8'}`, background: v.handzone === opt.value ? '#f0f4ff' : '#f9f9f9', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}>
-            <Radio selected={v.handzone === opt.value} />
-            <div>
-              <p style={{ margin: 0, fontSize: '13px', fontWeight: '500', color: '#000', lineHeight: 1.4 }}>{opt.label}</p>
-              <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#c9a84c', fontWeight: '600' }}>+1.000,00 MDL</p>
+
+        {SATELLITE_WORKSHOPS.map(sw => {
+          const count = satelliteCounts[sw.id] ?? 0
+          const spotsLeft = SATELLITE_CAPACITY - count
+          const isFull = spotsLeft <= 0
+          const isSelected = v.satellite === sw.id
+
+          return (
+            <div
+              key={sw.id}
+              onClick={() => !isFull && set('satellite', sw.id)}
+              style={{
+                display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 14px', marginBottom: '8px',
+                borderRadius: '10px', border: `1.5px solid ${isSelected ? '#1a3a6b' : isFull ? '#f0e0e0' : '#e8e8e8'}`,
+                background: isSelected ? '#f0f4ff' : isFull ? '#fff8f8' : '#f9f9f9',
+                cursor: isFull ? 'not-allowed' : 'pointer', userSelect: 'none', transition: 'all 0.15s',
+                opacity: isFull ? 0.85 : 1,
+              }}
+            >
+              <Radio selected={isSelected} />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: isFull ? '#999' : '#000', lineHeight: 1.4 }}>{sw.label}</p>
+                  {isFull ? (
+                    <span style={{ fontSize: '11px', background: '#c0392b', color: '#fff', padding: '2px 8px', borderRadius: '20px', whiteSpace: 'nowrap', flexShrink: 0 }}>Locuri epuizate</span>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#2a6b3a', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0 }}>{spotsLeft} locuri rămase</span>
+                  )}
+                </div>
+                <p style={{ margin: '4px 0 2px', fontSize: '12px', color: '#777', lineHeight: 1.4 }}>{sw.description}</p>
+                <p style={{ margin: 0, fontSize: '11px', color: '#999' }}>📍 {sw.location} &nbsp;·&nbsp; 🗓 {sw.date}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
+
+      {/* ── Hands-on Workshops (paid, hidden for students) ── */}
+      {!isStudent && (
+        <div style={{ marginTop: '8px' }}>
+          <p style={{ ...labelStyle, marginBottom: '10px' }}>
+            Adaugă un Hands-on Workshop
+            <span style={{ marginLeft: '8px', background: '#c9a84c', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '20px', fontWeight: '500', textTransform: 'none', letterSpacing: 0 }}>
+              +1.000 MDL / workshop
+            </span>
+          </p>
+          <div onClick={() => set('handzone', 'none')} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', marginBottom: '8px', borderRadius: '10px', border: `1.5px solid ${v.handzone === 'none' ? '#1a3a6b' : '#e8e8e8'}`, background: v.handzone === 'none' ? '#f0f4ff' : '#f9f9f9', cursor: 'pointer', userSelect: 'none' }}>
+            <Radio selected={v.handzone === 'none'} />
+            <span style={{ fontSize: '13px', color: '#555' }}>Fără workshop cu plată</span>
+          </div>
+          {HANDZONE_OPTIONS.map(opt => (
+            <div key={opt.value} onClick={() => set('handzone', opt.value)} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 14px', marginBottom: '8px', borderRadius: '10px', border: `1.5px solid ${v.handzone === opt.value ? '#1a3a6b' : '#e8e8e8'}`, background: v.handzone === opt.value ? '#f0f4ff' : '#f9f9f9', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}>
+              <Radio selected={v.handzone === opt.value} />
+              <div>
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#000', lineHeight: 1.4 }}>{opt.label}</p>
+                <p style={{ margin: '3px 0 3px', fontSize: '12px', color: '#777', lineHeight: 1.4 }}>{opt.description}</p>
+                <p style={{ margin: '0 0 2px', fontSize: '11px', color: '#999' }}>🎤 {opt.speaker} &nbsp;·&nbsp; 📍 {opt.location} &nbsp;·&nbsp; 🗓 {opt.date}</p>
+                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#c9a84c', fontWeight: '600' }}>+1.000,00 MDL</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isStudent && (
+        <div style={{ background: '#f0f4ff', border: '1px solid #d0d8f0', borderRadius: '10px', padding: '12px 14px', fontSize: '13px', color: '#555' }}>
+          💡 Workshopurile cu plată nu sunt disponibile pentru înregistrarea de tip Student.
+        </div>
+      )}
     </div>
   )
 }
@@ -159,8 +288,16 @@ export default function CartPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hydrated, setHydrated] = useState(false)
+  const [satelliteCounts, setSatelliteCounts] = useState<Record<string, number>>({})
 
-  useEffect(() => { setHydrated(true) }, [])
+  useEffect(() => {
+    setHydrated(true)
+    // Load satellite counts
+    const counts: Record<string, number> = {}
+    SATELLITE_WORKSHOPS.forEach(sw => { counts[sw.id] = getSatelliteCount(sw.id) })
+    setSatelliteCounts(counts)
+  }, [])
+
   useEffect(() => {
     if (!hydrated) return
     setForms(prev => cart.map((item, i) => prev[i] ?? defaultForm(item.type)))
@@ -185,7 +322,7 @@ export default function CartPage() {
       const item = cart[i]
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const f = forms[i] as any
-      const label = `Bilet ${i + 1} (${item.name})`
+      const label = `Înregistrare ${i + 1} (${item.name})`
       if (!f.nume?.trim())    return `${label}: completează Numele`
       if (!f.prenume?.trim()) return `${label}: completează Prenumele`
       if (!f.email?.trim() || !f.email.includes('@')) return `${label}: email invalid`
@@ -199,6 +336,14 @@ export default function CartPage() {
       if (item.type === 'Nurse') {
         if (!f.spital?.trim()) return `${label}: completează Spitalul`
         if (!f.sectie?.trim()) return `${label}: completează Secția`
+      }
+      // Validate satellite capacity at submit time
+      if (f.satellite && f.satellite !== 'none') {
+        const count = getSatelliteCount(f.satellite)
+        if (count >= SATELLITE_CAPACITY) {
+          const sw = SATELLITE_WORKSHOPS.find(s => s.id === f.satellite)
+          return `${label}: locurile pentru "${sw?.label}" sunt epuizate.`
+        }
       }
     }
     return null
@@ -218,6 +363,12 @@ export default function CartPage() {
       })
       const data = await res.json()
       if (data.ok && data.checkoutUrl) {
+        // Increment satellite counts for selected workshops
+        forms.forEach(f => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sat = (f as any).satellite
+          if (sat && sat !== 'none') incrementSatelliteCount(sat)
+        })
         clearCart()
         window.location.href = data.checkoutUrl
       } else {
@@ -252,7 +403,7 @@ export default function CartPage() {
         <div style={{ fontSize: '56px', marginBottom: '1.25rem' }}>🛒</div>
         <h1 style={{ fontFamily: '"Playfair Display", serif', fontWeight: '400', fontSize: isMobile ? '22px' : '28px', marginBottom: '0.75rem', color: '#000' }}>Coșul este gol</h1>
         <p style={{ color: '#888', marginBottom: '2rem', fontSize: '15px' }}>Nu ai adăugat niciun bilet încă.</p>
-        <Link href="/shop" style={{ background: '#1a3a6b', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: '500', fontSize: '15px' }}>← Înapoi la bilete</Link>
+        <Link href="/registration" style={{ background: '#1a3a6b', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: '500', fontSize: '15px' }}>← Înapoi la înregistrare</Link>
       </main>
       <Footer />
     </div>
@@ -267,7 +418,7 @@ export default function CartPage() {
         </div>
         <h1 style={{ fontFamily: '"Playfair Display", serif', fontWeight: '400', fontSize: isMobile ? '22px' : '28px', marginBottom: '0.5rem', color: '#000' }}>Înregistrare reușită!</h1>
         <p style={{ color: '#888', marginBottom: '2rem' }}>Vei primi confirmarea pe email în câteva minute.</p>
-        <Link href="/shop" style={{ background: '#1a3a6b', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: '500' }}>← Înapoi la bilete</Link>
+        <Link href="/registration" style={{ background: '#1a3a6b', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: '500' }}>← Înapoi la înregistrare</Link>
       </main>
       <Footer />
     </div>
@@ -279,7 +430,7 @@ export default function CartPage() {
 
       <main style={{ maxWidth: '1100px', margin: '0 auto', padding: isMobile ? '1.25rem 1rem 5rem' : '2rem 2rem 5rem' }}>
         <p style={{ fontSize: '13px', color: '#888', margin: '0 0 1.25rem' }}>
-          <Link href="/shop" style={{ color: '#1a3a6b', textDecoration: 'none' }}>Biletele</Link> {' / '} Coș
+          <Link href="/registration" style={{ color: '#1a3a6b', textDecoration: 'none' }}>Înregistrare</Link> {' / '} Coș
         </p>
         <h1 style={{ fontFamily: '"Playfair Display", serif', fontSize: isMobile ? '22px' : '28px', fontWeight: '400', margin: '0 0 1.5rem', color: '#000' }}>Coșul meu</h1>
 
@@ -293,18 +444,14 @@ export default function CartPage() {
 
         <form onSubmit={handleSubmit}>
           {isMobile ? (
-            /* ════════════════════════════════════════
-               MOBILE — full forms + fixed bottom bar
-            ════════════════════════════════════════ */
             <div>
-              {/* Ticket forms */}
               {cart.map((item, i) => (
                 <div key={`${item.id}-${i}`} style={{ position: 'relative' }}>
                   {forms[i] && (
                     <TicketForm
                       ticketType={item.type} ticketName={item.name} index={i}
                       value={forms[i]} onChange={val => updateForm(i, val)}
-                      isMobile={true}
+                      isMobile={true} satelliteCounts={satelliteCounts}
                     />
                   )}
                   <button type="button"
@@ -314,7 +461,6 @@ export default function CartPage() {
                 </div>
               ))}
 
-              {/* Order summary — inline above the fixed bar */}
               <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '1.1rem', marginBottom: '1rem' }}>
                 <h2 style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 1rem', color: '#000' }}>Sumar comandă</h2>
                 {cart.map((item, i) => (
@@ -329,6 +475,16 @@ export default function CartPage() {
                         <span style={{ fontSize: '12px', fontWeight: '500', color: '#c9a84c', whiteSpace: 'nowrap' }}>+1.000 MDL</span>
                       </div>
                     )}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {forms[i] && (forms[i] as any).satellite && (forms[i] as any).satellite !== 'none' && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', paddingLeft: '8px' }}>
+                        <span style={{ fontSize: '11px', color: '#2a6b3a', flex: 1, lineHeight: 1.3, paddingRight: '8px' }}>
+                          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                          🌿 {SATELLITE_WORKSHOPS.find(sw => sw.id === (forms[i] as any).satellite)?.label}
+                        </span>
+                        <span style={{ fontSize: '12px', fontWeight: '500', color: '#2a6b3a', whiteSpace: 'nowrap' }}>Gratuit</span>
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div style={{ borderTop: '1px solid #eee', marginTop: '10px', paddingTop: '10px', display: 'flex', justifyContent: 'space-between' }}>
@@ -337,33 +493,14 @@ export default function CartPage() {
                 </div>
               </div>
 
-              {/* Fixed purchase button at bottom */}
-              <div style={{
-                position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
-                background: '#fff', borderTop: '1px solid #eee',
-                padding: '12px 16px',
-                boxShadow: '0 -4px 16px rgba(0,0,0,0.08)',
-              }}>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  style={{
-                    width: '100%', padding: '15px',
-                    background: loading ? '#888' : '#1a3a6b',
-                    color: '#fff', border: 'none', borderRadius: '10px',
-                    fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer',
-                    fontFamily: 'inherit', transition: 'background 0.2s',
-                  }}
-                >
+              <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100, background: '#fff', borderTop: '1px solid #eee', padding: '12px 16px', boxShadow: '0 -4px 16px rgba(0,0,0,0.08)' }}>
+                <button type="submit" disabled={loading} style={{ width: '100%', padding: '15px', background: loading ? '#888' : '#1a3a6b', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}>
                   {loading ? 'Se salvează...' : `Finalizează înregistrarea — ${formatMDL(total)}`}
                 </button>
                 <p style={{ fontSize: '11px', color: '#aaa', textAlign: 'center', margin: '6px 0 0' }}>Datele tale sunt salvate securizat.</p>
               </div>
             </div>
           ) : (
-            /* ════════════════════════════════════════
-               DESKTOP — two-column with sticky sidebar
-            ════════════════════════════════════════ */
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '2rem', alignItems: 'start' }}>
               <div>
                 {cart.map((item, i) => (
@@ -372,7 +509,7 @@ export default function CartPage() {
                       <TicketForm
                         ticketType={item.type} ticketName={item.name} index={i}
                         value={forms[i]} onChange={val => updateForm(i, val)}
-                        isMobile={false}
+                        isMobile={false} satelliteCounts={satelliteCounts}
                       />
                     )}
                     <button type="button"
@@ -396,6 +533,14 @@ export default function CartPage() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', paddingLeft: '8px' }}>
                         <span style={{ fontSize: '11px', color: '#888', maxWidth: '180px', lineHeight: 1.3 }}>+ {getHandzoneLabel(forms[i].handzone as HandzoneOption)}</span>
                         <span style={{ fontSize: '12px', fontWeight: '500', color: '#c9a84c', whiteSpace: 'nowrap', marginLeft: '8px' }}>+1.000 MDL</span>
+                      </div>
+                    )}
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                    {forms[i] && (forms[i] as any).satellite && (forms[i] as any).satellite !== 'none' && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', paddingLeft: '8px' }}>
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        <span style={{ fontSize: '11px', color: '#2a6b3a', maxWidth: '180px', lineHeight: 1.3 }}>🌿 {SATELLITE_WORKSHOPS.find(sw => sw.id === (forms[i] as any).satellite)?.label}</span>
+                        <span style={{ fontSize: '12px', fontWeight: '500', color: '#2a6b3a', whiteSpace: 'nowrap', marginLeft: '8px' }}>Gratuit</span>
                       </div>
                     )}
                   </div>
