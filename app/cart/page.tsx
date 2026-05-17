@@ -327,6 +327,8 @@ export default function CartPage() {
       if (!f.prenume?.trim()) return `${label}: completează Prenumele`
       if (!f.email?.trim() || !f.email.includes('@')) return `${label}: email invalid`
       if (!f.telefon?.trim()) return `${label}: completează Telefonul`
+      const phoneDigits = f.telefon.replace(/\D/g, '')
+      if (phoneDigits.length < 8 || phoneDigits.length > 12) return `${label}: număr de telefon invalid (ex. 069123456)`
       if (!f.adresa?.trim())  return `${label}: completează Adresa`
       if (item.type === 'Student' && !f.carnetId?.trim()) return `${label}: completează Nr. Carnet de Student`
       if (item.type === 'Resident') {

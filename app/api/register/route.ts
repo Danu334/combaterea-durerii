@@ -22,9 +22,10 @@ const HANDZONE_PRICE = 1000
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!
 
 function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  if (digits.startsWith('373')) return `+${digits}`
-  if (digits.startsWith('0'))   return `+373${digits.slice(1)}`
+  let digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('373')) digits = digits.slice(3)
+  if (digits.startsWith('0')) digits = digits.slice(1)
+  digits = digits.slice(-8)
   return `+373${digits}`
 }
 
