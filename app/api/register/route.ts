@@ -4,13 +4,16 @@ import { sql } from '@/lib/db'
 
 type TicketType = 'Student' | 'Resident' | 'Nurse'
 type HandzoneOption = 'none' | 'botulinum' | 'locoregional' | 'locoregional-periop'
+type SatelliteOption = 'none' | 'y2y' | 'imagistica'
 
 interface CartItem {
   id: string; name: string; type: TicketType; price: string; priceNum: number
 }
 interface BaseForm {
   email: string; nume: string; prenume: string
-  adresa: string; telefon: string; handzone: HandzoneOption
+  adresa: string; telefon: string
+  handzone: HandzoneOption
+  satellite: SatelliteOption
 }
 interface StudentForm  extends BaseForm { carnetId: string }
 interface ResidentForm extends BaseForm { spital: string; specialitate: string }
@@ -44,7 +47,12 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < cart.length; i++) {
       const item = cart[i]
       const f = forms[i] as unknown as Record<string, string>
-      const totalPrice = item.priceNum + (f.handzone !== 'none' ? HANDZONE_PRICE : 0)
+
+      // Safely read handzone — default to 'none' if missing
+      const handzone: HandzoneOption = (f.handzone as HandzoneOption) || 'none'
+      const satellite: SatelliteOption = (f.satellite as SatelliteOption) || 'none'
+
+      const totalPrice = item.priceNum + (handzone !== 'none' ? HANDZONE_PRICE : 0)
       grandTotal += totalPrice
 
       let personId: number
@@ -57,8 +65,8 @@ export async function POST(req: NextRequest) {
           RETURNING id`
         personId = rows[0].id
         const ticket = await sql`
-          INSERT INTO tickets (ticket_type, price_mdl, handzone, status, student_id)
-          VALUES (${'Student'}, ${totalPrice}, ${f.handzone}, ${'pending'}, ${personId})
+          INSERT INTO tickets (ticket_type, price_mdl, handzone, satellite_workshop, status, student_id)
+          VALUES (${'Student'}, ${totalPrice}, ${handzone}, ${satellite}, ${'pending'}, ${personId})
           RETURNING id`
         ticketIds.push(ticket[0].id)
 
@@ -71,8 +79,8 @@ export async function POST(req: NextRequest) {
           RETURNING id`
         personId = rows[0].id
         const ticket = await sql`
-          INSERT INTO tickets (ticket_type, price_mdl, handzone, status, resident_id)
-          VALUES (${'Resident'}, ${totalPrice}, ${f.handzone}, ${'pending'}, ${personId})
+          INSERT INTO tickets (ticket_type, price_mdl, handzone, satellite_workshop, status, resident_id)
+          VALUES (${'Resident'}, ${totalPrice}, ${handzone}, ${satellite}, ${'pending'}, ${personId})
           RETURNING id`
         ticketIds.push(ticket[0].id)
 
@@ -85,8 +93,8 @@ export async function POST(req: NextRequest) {
           RETURNING id`
         personId = rows[0].id
         const ticket = await sql`
-          INSERT INTO tickets (ticket_type, price_mdl, handzone, status, nurse_id)
-          VALUES (${'Nurse'}, ${totalPrice}, ${f.handzone}, ${'pending'}, ${personId})
+          INSERT INTO tickets (ticket_type, price_mdl, handzone, satellite_workshop, status, nurse_id)
+          VALUES (${'Nurse'}, ${totalPrice}, ${handzone}, ${satellite}, ${'pending'}, ${personId})
           RETURNING id`
         ticketIds.push(ticket[0].id)
       }
@@ -99,7 +107,6 @@ export async function POST(req: NextRequest) {
     const userAgent = req.headers.get('user-agent') ?? 'Mozilla/5.0'
     const phone     = normalizePhone(firstForm.telefon.trim())
 
-    // amount must be a float with 2 decimal places
     const amount = parseFloat(grandTotal.toFixed(2))
 
     const checkoutData = {
@@ -107,7 +114,7 @@ export async function POST(req: NextRequest) {
       currency: 'MDL',
       orderInfo: {
         id: orderId,
-        description: `Bilete IPC 2026 (${ticketIds.length})`,
+        description: `Inregistrare IPC 2026 (${ticketIds.length})`,
         date: new Date().toISOString(),
         orderAmount:      null,
         orderCurrency:    null,
@@ -115,10 +122,11 @@ export async function POST(req: NextRequest) {
         deliveryCurrency: null,
         items: cart.map((item, i) => {
           const f = forms[i] as unknown as Record<string, string>
-          const price = parseFloat((item.priceNum + (f.handzone !== 'none' ? HANDZONE_PRICE : 0)).toFixed(2))
+          const handzone: HandzoneOption = (f.handzone as HandzoneOption) || 'none'
+          const price = parseFloat((item.priceNum + (handzone !== 'none' ? HANDZONE_PRICE : 0)).toFixed(2))
           return {
             externalId:   ticketIds[i].toString(),
-            title:        item.name.substring(0, 100), // max 100 chars
+            title:        item.name.substring(0, 100),
             amount:       price,
             currency:     'MDL',
             quantity:     1,
@@ -156,8 +164,7 @@ export async function POST(req: NextRequest) {
     await sql`
       UPDATE tickets
       SET maib_session_id = ${session.checkoutId}
-      WHERE id = ANY(${ticketIds}::int[])
-    `
+      WHERE id = ANY(${ticketIds}::int[])`
 
     return NextResponse.json({ ok: true, checkoutUrl: session.checkoutUrl })
 
