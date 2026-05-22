@@ -16,6 +16,11 @@ const HANDZONE_LABELS: Record<string, string> = {
   'locoregional-periop': 'Workshop – Locoregional Techniques for Perioperative Pain Management',
 }
 
+const SATELLITE_LABELS: Record<string, string> = {
+  y2y:        'Young to Young',
+  imagistica: 'Bazele Imagisticii pentru Kinetoterapeuți',
+}
+
 // ─── Colours ──────────────────────────────────────────────────────────────────
 const NAVY  = rgb(0.102, 0.227, 0.420)   // #1a3a6b
 const GOLD  = rgb(0.788, 0.659, 0.298)   // #c9a84c
@@ -23,6 +28,7 @@ const CREAM = rgb(0.961, 0.949, 0.922)   // #f5f2eb
 const WHITE = rgb(1, 1, 1)
 const GREY  = rgb(0.333, 0.333, 0.333)
 const LIGHT = rgb(0.600, 0.600, 0.600)
+const GREEN = rgb(0.165, 0.420, 0.231)   // #2a6b3a (satellite green)
 
 // ─── Generate PDF buffer ──────────────────────────────────────────────────────
 export async function buildTicketPdf(ticket: {
@@ -33,6 +39,7 @@ export async function buildTicketPdf(ticket: {
   ticket_type: string
   price_mdl: number
   handzone: string
+  satellite_workshop?: string
 }): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create()
 
@@ -136,6 +143,19 @@ export async function buildTicketPdf(ticket: {
     ly -= 14
   }
 
+  // Satellite workshop badge (NEW)
+  if (ticket.satellite_workshop && ticket.satellite_workshop !== 'none') {
+    const satLabel = SATELLITE_LABELS[ticket.satellite_workshop] ?? ticket.satellite_workshop
+    // Green badge background
+    page.drawRectangle({ x: LEFT, y: ly - 14, width: 200, height: 16, color: GREEN })
+    page.drawText('🌿 Satellite Workshop', { x: LEFT + 6, y: ly - 11, font: fontHelvB, size: 8, color: WHITE })
+    ly -= 20
+    // Workshop name
+    const shortSatLabel = satLabel.length > 48 ? satLabel.substring(0, 45) + '...' : satLabel
+    page.drawText(shortSatLabel, { x: LEFT, y: ly - 2, font: fontItalic, size: 8, color: LIGHT })
+    ly -= 14
+  }
+
   // ── Right column: price + ticket ID ──────────────────────────────────────────
   const RIGHT_X = W - 28
   const totalLabel = 'TOTAL'
@@ -176,6 +196,7 @@ export async function buildTicketEmail(ticket: {
   ticket_type: string
   price_mdl: number
   handzone: string
+  satellite_workshop?: string
 }) {
   const typeLabel: Record<string, string> = {
     Student: 'Student', Resident: 'Rezident / Doctor', Nurse: 'Asistentă Medicală',
@@ -183,6 +204,9 @@ export async function buildTicketEmail(ticket: {
   const ticketId = String(ticket.id).padStart(6, '0')
   const handzoneLabel = ticket.handzone !== 'none'
     ? (HANDZONE_LABELS[ticket.handzone] ?? ticket.handzone)
+    : null
+  const satelliteLabel = ticket.satellite_workshop && ticket.satellite_workshop !== 'none'
+    ? (SATELLITE_LABELS[ticket.satellite_workshop] ?? ticket.satellite_workshop)
     : null
 
   const pdfBuffer = await buildTicketPdf(ticket)
@@ -242,8 +266,13 @@ export async function buildTicketEmail(ticket: {
             </tr>
             ${handzoneLabel ? `
             <tr>
-              <td style="color:#888;font-family:Arial,sans-serif;">Workshop:</td>
+              <td style="color:#888;font-family:Arial,sans-serif;">Paid Workshop:</td>
               <td style="font-family:Arial,sans-serif;color:#c9a84c;font-weight:600;">${handzoneLabel}</td>
+            </tr>` : ''}
+            ${satelliteLabel ? `
+            <tr>
+              <td style="color:#888;font-family:Arial,sans-serif;">Satellite Workshop:</td>
+              <td style="font-family:Arial,sans-serif;color:#2a6b3a;font-weight:600;">🌿 ${satelliteLabel}</td>
             </tr>` : ''}
             <tr>
               <td style="color:#888;font-family:Arial,sans-serif;">Total plătit:</td>
