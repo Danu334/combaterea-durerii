@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── 3. Build MAIB payload (identical structure to original) ───────────
+    // ── 3. Build MAIB payload (removed null fields - they cause api-0001001 error) ───────────
     const firstForm = forms[0] as unknown as Record<string, string>
     const orderId   = `IPC-${ticketIds.join('-')}-${Date.now()}`
     const ip        = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
@@ -113,10 +113,7 @@ export async function POST(req: NextRequest) {
         id: orderId,
         description: `Bilete IPC 2026 (${ticketIds.length})`,
         date: new Date().toISOString(),
-        orderAmount:      null,
-        orderCurrency:    null,
-        deliveryAmount:   null,
-        deliveryCurrency: null,
+        // ✅ REMOVED: orderAmount, orderCurrency, deliveryAmount, deliveryCurrency (null values)
         items: cart.map((item, i) => {
           const f = forms[i] as unknown as Record<string, string>
           const handzone = (f.handzone || 'none') as HandzoneOption
