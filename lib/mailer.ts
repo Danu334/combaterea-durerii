@@ -108,7 +108,6 @@ export async function buildTicketPdf(ticket: {
   })
 
   // ── Dashed divider ────────────────────────────────────────────────────────────
-  // Simulate dashes manually
   const dashY = H - 158
   for (let x = 28; x < W - 28; x += 8) {
     page.drawLine({ start: { x, y: dashY }, end: { x: x + 4, y: dashY }, thickness: 0.8, color: GOLD, opacity: 0.5 })
@@ -121,21 +120,20 @@ export async function buildTicketPdf(ticket: {
 
   const venueLines = [
     '01-03 Octombrie 2026',
-    'Chisinau, Republica Moldova',
-    'Radisson Blu Leogrand',
-    'Strada Mitropolit Varlaam 77',
+    'Chișinău, Republica Moldova',
+    'Digital Park, Strada Mihai Viteazul 15',
   ]
   for (const line of venueLines) {
     page.drawText(line, { x: LEFT, y: ly, font: fontRegular, size: 10, color: GREY })
     ly -= lineGap
   }
 
-  // Handzone badge
+  // Hands-On badge
   if (ticket.handzone !== 'none') {
     const label = HANDZONE_LABELS[ticket.handzone] ?? ticket.handzone
     // Badge background
     page.drawRectangle({ x: LEFT, y: ly - 14, width: 200, height: 16, color: NAVY })
-    page.drawText('+ Handzone Workshop', { x: LEFT + 6, y: ly - 11, font: fontHelvB, size: 8, color: GOLD })
+    page.drawText('+ Hands-On Workshop', { x: LEFT + 6, y: ly - 11, font: fontHelvB, size: 8, color: GOLD })
     ly -= 20
     // Workshop name (smaller, wrap if needed)
     const shortLabel = label.length > 48 ? label.substring(0, 45) + '...' : label
@@ -143,12 +141,12 @@ export async function buildTicketPdf(ticket: {
     ly -= 14
   }
 
-  // Satellite workshop badge (NEW)
+  // Satellite workshop badge
   if (ticket.satellite_workshop && ticket.satellite_workshop !== 'none') {
     const satLabel = SATELLITE_LABELS[ticket.satellite_workshop] ?? ticket.satellite_workshop
     // Green badge background
     page.drawRectangle({ x: LEFT, y: ly - 14, width: 200, height: 16, color: GREEN })
-    page.drawText('🌿 Satellite Workshop', { x: LEFT + 6, y: ly - 11, font: fontHelvB, size: 8, color: WHITE })
+    page.drawText('Satellite Workshop', { x: LEFT + 6, y: ly - 11, font: fontHelvB, size: 8, color: WHITE })
     ly -= 20
     // Workshop name
     const shortSatLabel = satLabel.length > 48 ? satLabel.substring(0, 45) + '...' : satLabel
@@ -266,7 +264,7 @@ export async function buildTicketEmail(ticket: {
             </tr>
             ${handzoneLabel ? `
             <tr>
-              <td style="color:#888;font-family:Arial,sans-serif;">Paid Workshop:</td>
+              <td style="color:#888;font-family:Arial,sans-serif;">Hands-On Workshop:</td>
               <td style="font-family:Arial,sans-serif;color:#c9a84c;font-weight:600;">${handzoneLabel}</td>
             </tr>` : ''}
             ${satelliteLabel ? `
@@ -278,7 +276,6 @@ export async function buildTicketEmail(ticket: {
               <td style="color:#888;font-family:Arial,sans-serif;">Total plătit:</td>
               <td style="font-weight:700;font-family:Arial,sans-serif;">${ticket.price_mdl.toLocaleString('ro-MD')} MDL</td>
             </tr>
-    
           </table>
         </td></tr>
       </table>
@@ -288,8 +285,8 @@ export async function buildTicketEmail(ticket: {
         <tr><td style="padding:18px 24px;">
           <p style="margin:0 0 10px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#999;font-family:Arial,sans-serif;">Informații eveniment</p>
           <p style="margin:0 0 5px;font-size:13px;color:#555;font-family:Arial,sans-serif;">📅 <strong>01–03 Octombrie 2026</strong></p>
-          <p style="margin:0 0 5px;font-size:13px;color:#555;font-family:Arial,sans-serif;">🏨 <strong>Radisson Blu Leogrand</strong></p>
-          <p style="margin:0;font-size:13px;color:#555;font-family:Arial,sans-serif;">📍 Strada Mitropolit Varlaam 77, Chișinău, Republica Moldova</p>
+          <p style="margin:0 0 5px;font-size:13px;color:#555;font-family:Arial,sans-serif;">🏨 <strong>Digital Park</strong></p>
+          <p style="margin:0;font-size:13px;color:#555;font-family:Arial,sans-serif;">📍 Strada Mihai Viteazul 15, Chișinău, Republica Moldova</p>
         </td></tr>
       </table>
 
