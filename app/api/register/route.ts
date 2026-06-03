@@ -19,7 +19,7 @@ interface NurseForm    extends BaseForm { spital: string; sectie: string }
 type AnyForm = StudentForm | ResidentForm | NurseForm
 
 const HANDZONE_PRICE = 1000
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!
+const BASE_URL = 'https://congress.nopainmoldova.org';
 
 function normalizePhone(raw: string): string {
   let digits = raw.replace(/\D/g, '')
