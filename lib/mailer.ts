@@ -1,6 +1,8 @@
 // lib/mailer.ts
 import nodemailer from 'nodemailer'
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { PDFDocument, rgb } from 'pdf-lib'
+import fs from 'fs'
+import path from 'path'
 
 export const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -11,14 +13,14 @@ export const transporter = nodemailer.createTransport({
 })
 
 const HANDZONE_LABELS: Record<string, string> = {
-  botulinum:             'Workshop – Botulinum Toxin in Pain Management',
-  locoregional:          'Workshop – Locoregional Techniques',
-  'locoregional-periop': 'Workshop – Locoregional Techniques for Perioperative Pain Management',
+  botulinum:             'Workshop - Botulinum Toxin in Pain Management',
+  locoregional:          'Workshop - Locoregional Techniques',
+  'locoregional-periop': 'Workshop - Locoregional Techniques for Perioperative Pain Management',
 }
 
 const SATELLITE_LABELS: Record<string, string> = {
   y2y:        'Young to Young',
-  imagistica: 'Bazele Imagisticii pentru Kinetoterapeuți',
+  imagistica: 'Bazele Imagisticii pentru Kinetoterapeuti',
 }
 
 // ─── Colours ──────────────────────────────────────────────────────────────────
@@ -29,6 +31,12 @@ const WHITE = rgb(1, 1, 1)
 const GREY  = rgb(0.333, 0.333, 0.333)
 const LIGHT = rgb(0.600, 0.600, 0.600)
 const GREEN = rgb(0.165, 0.420, 0.231)   // #2a6b3a (satellite green)
+
+// ─── Load font bytes (cached at module level) ─────────────────────────────────
+function loadFontBytes(filename: string): Uint8Array {
+  const fontPath = path.join(process.cwd(), 'public', 'fonts', filename)
+  return new Uint8Array(fs.readFileSync(fontPath))
+}
 
 // ─── Generate PDF buffer ──────────────────────────────────────────────────────
 export async function buildTicketPdf(ticket: {
@@ -47,11 +55,12 @@ export async function buildTicketPdf(ticket: {
   const W = 500, H = 320
   const page = pdfDoc.addPage([W, H])
 
-  const fontRegular = await pdfDoc.embedFont(StandardFonts.TimesRoman)
-  const fontBold    = await pdfDoc.embedFont(StandardFonts.TimesRomanBold)
-  const fontItalic  = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic)
-  const fontHelv    = await pdfDoc.embedFont(StandardFonts.Helvetica)
-  const fontHelvB   = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+  // ── Embed Unicode-capable fonts (supports ș, ț, ă, î, â) ──────────────────
+  const fontRegular = await pdfDoc.embedFont(loadFontBytes('Roboto-Regular.ttf'), { subset: true })
+  const fontBold    = await pdfDoc.embedFont(loadFontBytes('Roboto-Bold.ttf'),    { subset: true })
+  const fontItalic  = await pdfDoc.embedFont(loadFontBytes('Roboto-Italic.ttf'),  { subset: true })
+  const fontHelv    = fontRegular
+  const fontHelvB   = fontBold
 
   // ── Background ──────────────────────────────────────────────────────────────
   page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: CREAM })
@@ -120,7 +129,7 @@ export async function buildTicketPdf(ticket: {
 
   const venueLines = [
     '01-03 Octombrie 2026',
-    'Chișinău, Republica Moldova',
+    'Chisinau, Republica Moldova',
     'Digital Park, Strada Mihai Viteazul 15',
   ]
   for (const line of venueLines) {
@@ -131,11 +140,9 @@ export async function buildTicketPdf(ticket: {
   // Hands-On badge
   if (ticket.handzone !== 'none') {
     const label = HANDZONE_LABELS[ticket.handzone] ?? ticket.handzone
-    // Badge background
     page.drawRectangle({ x: LEFT, y: ly - 14, width: 200, height: 16, color: NAVY })
     page.drawText('+ Hands-On Workshop', { x: LEFT + 6, y: ly - 11, font: fontHelvB, size: 8, color: GOLD })
     ly -= 20
-    // Workshop name (smaller, wrap if needed)
     const shortLabel = label.length > 48 ? label.substring(0, 45) + '...' : label
     page.drawText(shortLabel, { x: LEFT, y: ly - 2, font: fontItalic, size: 8, color: LIGHT })
     ly -= 14
@@ -144,11 +151,9 @@ export async function buildTicketPdf(ticket: {
   // Satellite workshop badge
   if (ticket.satellite_workshop && ticket.satellite_workshop !== 'none') {
     const satLabel = SATELLITE_LABELS[ticket.satellite_workshop] ?? ticket.satellite_workshop
-    // Green badge background
     page.drawRectangle({ x: LEFT, y: ly - 14, width: 200, height: 16, color: GREEN })
     page.drawText('Satellite Workshop', { x: LEFT + 6, y: ly - 11, font: fontHelvB, size: 8, color: WHITE })
     ly -= 20
-    // Workshop name
     const shortSatLabel = satLabel.length > 48 ? satLabel.substring(0, 45) + '...' : satLabel
     page.drawText(shortSatLabel, { x: LEFT, y: ly - 2, font: fontItalic, size: 8, color: LIGHT })
     ly -= 14
@@ -179,7 +184,7 @@ export async function buildTicketPdf(ticket: {
   })
 
   // ── Thin gold border around entire card ──────────────────────────────────────
-  page.drawRectangle({ x: 1, y: 1, width: W - 2, height: H - 2, borderColor: GOLD, borderWidth: 1.2, color: rgb(0,0,0,), opacity: 0 })
+  page.drawRectangle({ x: 1, y: 1, width: W - 2, height: H - 2, borderColor: GOLD, borderWidth: 1.2, color: rgb(0, 0, 0), opacity: 0 })
 
   const pdfBytes = await pdfDoc.save()
   return Buffer.from(pdfBytes)
