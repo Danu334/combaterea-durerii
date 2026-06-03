@@ -38,7 +38,7 @@ function SuccessContent() {
             <><br/><span style={{ fontSize: '12px', color: '#bbb' }}>Bilet(e): #{tickets.split(',').join(', #')}</span></>
           )}
         </p>
-        <Link href="/shop" style={{
+        <Link href="/registration" style={{
           background: '#1a3a6b', color: '#fff',
           padding: '12px 32px', borderRadius: '8px',
           textDecoration: 'none', fontWeight: '500', fontSize: '15px',
