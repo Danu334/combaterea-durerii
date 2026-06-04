@@ -1,6 +1,7 @@
 // lib/mailer.ts
 import nodemailer from 'nodemailer'
 import { PDFDocument, rgb } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
 import fs from 'fs'
 import path from 'path'
 
@@ -50,6 +51,7 @@ export async function buildTicketPdf(ticket: {
   satellite_workshop?: string
 }): Promise<Buffer> {
   const pdfDoc = await PDFDocument.create()
+  pdfDoc.registerFontkit(fontkit)
 
   // A5 landscape-ish card: 500 × 320 pt
   const W = 500, H = 320
