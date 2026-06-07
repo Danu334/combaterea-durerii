@@ -38,9 +38,9 @@ async function getFonts() {
   if (fontCache) return fontCache
 
   const [regular, bold, italic] = await Promise.all([
-    fetch('https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Regular.ttf').then(r => r.arrayBuffer()),
-    fetch('https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Bold.ttf').then(r => r.arrayBuffer()),
-    fetch('https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Italic.ttf').then(r => r.arrayBuffer()),
+    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Regular.ttf').then(r => r.arrayBuffer()),
+    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Bold.ttf').then(r => r.arrayBuffer()),
+    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Italic.ttf').then(r => r.arrayBuffer()),
   ])
 
   fontCache = {
