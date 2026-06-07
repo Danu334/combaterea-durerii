@@ -2,8 +2,6 @@
 import nodemailer from 'nodemailer'
 import { PDFDocument, rgb } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
-import fs from 'fs'
-import path from 'path'
 
 export const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -33,10 +31,24 @@ const GREY  = rgb(0.333, 0.333, 0.333)
 const LIGHT = rgb(0.600, 0.600, 0.600)
 const GREEN = rgb(0.165, 0.420, 0.231)   // #2a6b3a (satellite green)
 
-// ─── Load font bytes (cached at module level) ─────────────────────────────────
-function loadFontBytes(filename: string): Uint8Array {
-  const fontPath = path.join(process.cwd(), 'public', 'fonts', filename)
-  return new Uint8Array(fs.readFileSync(fontPath))
+// ─── Font cache (fetched once per cold start, reused across warm invocations) ─
+let fontCache: { regular: Uint8Array; bold: Uint8Array; italic: Uint8Array } | null = null
+
+async function getFonts() {
+  if (fontCache) return fontCache
+
+  const [regular, bold, italic] = await Promise.all([
+    fetch('https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Regular.ttf').then(r => r.arrayBuffer()),
+    fetch('https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Bold.ttf').then(r => r.arrayBuffer()),
+    fetch('https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Italic.ttf').then(r => r.arrayBuffer()),
+  ])
+
+  fontCache = {
+    regular: new Uint8Array(regular),
+    bold:    new Uint8Array(bold),
+    italic:  new Uint8Array(italic),
+  }
+  return fontCache
 }
 
 // ─── Generate PDF buffer ──────────────────────────────────────────────────────
@@ -58,9 +70,10 @@ export async function buildTicketPdf(ticket: {
   const page = pdfDoc.addPage([W, H])
 
   // ── Embed Unicode-capable fonts (supports ș, ț, ă, î, â) ──────────────────
-  const fontRegular = await pdfDoc.embedFont(loadFontBytes('Roboto-Regular.ttf'), { subset: true })
-  const fontBold    = await pdfDoc.embedFont(loadFontBytes('Roboto-Bold.ttf'),    { subset: true })
-  const fontItalic  = await pdfDoc.embedFont(loadFontBytes('Roboto-Italic.ttf'),  { subset: true })
+  const fonts = await getFonts()
+  const fontRegular = await pdfDoc.embedFont(fonts.regular, { subset: true })
+  const fontBold    = await pdfDoc.embedFont(fonts.bold,    { subset: true })
+  const fontItalic  = await pdfDoc.embedFont(fonts.italic,  { subset: true })
   const fontHelv    = fontRegular
   const fontHelvB   = fontBold
 
@@ -204,7 +217,7 @@ export async function buildTicketEmail(ticket: {
   satellite_workshop?: string
 }) {
   const typeLabel: Record<string, string> = {
-    Student: 'Student', Resident: 'Rezident / Doctor', Nurse: 'Asistentă Medicală',
+    Student: 'Student', Resident: 'Rezident / Doctor', Nurse: 'Asistenta Medicala',
   }
   const ticketId = String(ticket.id).padStart(6, '0')
   const handzoneLabel = ticket.handzone !== 'none'
@@ -229,13 +242,13 @@ export async function buildTicketEmail(ticket: {
   <tr>
     <td style="background:#1a3a6b;padding:32px 40px;text-align:center;">
       <p style="margin:0 0 6px;font-size:10px;letter-spacing:3px;color:#c9a84c;text-transform:uppercase;font-family:Arial,sans-serif;">
-        Confirmare Înregistrare
+        Confirmare Inregistrare
       </p>
       <h1 style="margin:0;font-size:22px;color:#ffffff;font-family:Georgia,serif;font-weight:700;">
         International Pain Congress 2026
       </h1>
       <p style="margin:8px 0 0;font-size:13px;color:#c9a84c;font-style:italic;font-family:Georgia,serif;">
-        20th Anniversary Edition · Moldova
+        20th Anniversary Edition &middot; Moldova
       </p>
     </td>
   </tr>
@@ -244,16 +257,16 @@ export async function buildTicketEmail(ticket: {
   <tr>
     <td style="padding:36px 40px;">
       <p style="margin:0 0 16px;font-size:15px;color:#333;line-height:1.7;">
-        Stimate/Stimată <strong style="color:#1a3a6b;">${ticket.prenume} ${ticket.nume}</strong>,
+        Stimate/Stimata <strong style="color:#1a3a6b;">${ticket.prenume} ${ticket.nume}</strong>,
       </p>
       <p style="margin:0 0 16px;font-size:14px;color:#555;line-height:1.8;">
-        Îți mulțumim pentru înregistrarea la <strong>International Pain Congress 2026</strong>.
-        Suntem încântați să te avem alături de noi la cea de-a <strong>20-a ediție aniversară</strong> a congresului,
-        un eveniment dedicat excelenței și progresului în managementul durerii.
+        Iti multumim pentru inregistrarea la <strong>International Pain Congress 2026</strong>.
+        Suntem incantati sa te avem alaturi de noi la cea de-a <strong>20-a editie aniversara</strong> a congresului,
+        un eveniment dedicat excelentei si progresului in managementul durerii.
       </p>
       <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.8;">
-        Biletul tău oficial este atașat acestui email în format PDF. Te rugăm să îl păstrezi
-        și să îl prezinți la intrarea în eveniment.
+        Biletul tau oficial este atasat acestui email in format PDF. Te rugam sa il pastrezi
+        si sa il prezinti la intrarea in eveniment.
       </p>
 
       <!-- Details box -->
@@ -277,10 +290,10 @@ export async function buildTicketEmail(ticket: {
             ${satelliteLabel ? `
             <tr>
               <td style="color:#888;font-family:Arial,sans-serif;">Satellite Workshop:</td>
-              <td style="font-family:Arial,sans-serif;color:#2a6b3a;font-weight:600;">🌿 ${satelliteLabel}</td>
+              <td style="font-family:Arial,sans-serif;color:#2a6b3a;font-weight:600;">&#127807; ${satelliteLabel}</td>
             </tr>` : ''}
             <tr>
-              <td style="color:#888;font-family:Arial,sans-serif;">Total plătit:</td>
+              <td style="color:#888;font-family:Arial,sans-serif;">Total platit:</td>
               <td style="font-weight:700;font-family:Arial,sans-serif;">${ticket.price_mdl.toLocaleString('ro-MD')} MDL</td>
             </tr>
           </table>
@@ -290,19 +303,19 @@ export async function buildTicketEmail(ticket: {
       <!-- Event info -->
       <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;border-radius:8px;margin-bottom:28px;">
         <tr><td style="padding:18px 24px;">
-          <p style="margin:0 0 10px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#999;font-family:Arial,sans-serif;">Informații eveniment</p>
-          <p style="margin:0 0 5px;font-size:13px;color:#555;font-family:Arial,sans-serif;">📅 <strong>01–03 Octombrie 2026</strong></p>
-          <p style="margin:0 0 5px;font-size:13px;color:#555;font-family:Arial,sans-serif;">🏨 <strong>Digital Park</strong></p>
-          <p style="margin:0;font-size:13px;color:#555;font-family:Arial,sans-serif;">📍 Strada Mihai Viteazul 15, Chișinău, Republica Moldova</p>
+          <p style="margin:0 0 10px;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#999;font-family:Arial,sans-serif;">Informatii eveniment</p>
+          <p style="margin:0 0 5px;font-size:13px;color:#555;font-family:Arial,sans-serif;">&#128197; <strong>01&ndash;03 Octombrie 2026</strong></p>
+          <p style="margin:0 0 5px;font-size:13px;color:#555;font-family:Arial,sans-serif;">&#127968; <strong>Digital Park</strong></p>
+          <p style="margin:0;font-size:13px;color:#555;font-family:Arial,sans-serif;">&#128205; Strada Mihai Viteazul 15, Chisinau, Republica Moldova</p>
         </td></tr>
       </table>
 
       <p style="margin:0 0 8px;font-size:14px;color:#555;line-height:1.8;">
-        Pentru orice întrebări sau informații suplimentare, nu ezita să ne contactezi la
+        Pentru orice intrebari sau informatii suplimentare, nu ezita sa ne contactezi la
         <a href="mailto:mssmp.md@gmail.com" style="color:#1a3a6b;font-weight:600;">mssmp.md@gmail.com</a>.
       </p>
       <p style="margin:0;font-size:14px;color:#555;line-height:1.8;">
-        Așteptăm cu nerăbdare să te întâlnim în octombrie!
+        Asteptam cu nerabdare sa te intalnim in octombrie!
       </p>
     </td>
   </tr>
@@ -310,12 +323,12 @@ export async function buildTicketEmail(ticket: {
   <!-- Signature -->
   <tr>
     <td style="padding:0 40px 32px;">
-      <p style="margin:0;font-size:14px;color:#333;font-family:Georgia,serif;">Cu stimă,</p>
+      <p style="margin:0;font-size:14px;color:#333;font-family:Georgia,serif;">Cu stima,</p>
       <p style="margin:4px 0 0;font-size:14px;font-weight:700;color:#1a3a6b;font-family:Georgia,serif;">
         Comitetul Organizatoric
       </p>
       <p style="margin:2px 0 0;font-size:12px;color:#888;font-family:Arial,sans-serif;">
-        International Pain Congress 2026 · nopainmoldova.org
+        International Pain Congress 2026 &middot; nopainmoldova.org
       </p>
     </td>
   </tr>
@@ -324,7 +337,7 @@ export async function buildTicketEmail(ticket: {
   <tr>
     <td style="background:#1a3a6b;padding:16px 40px;text-align:center;">
       <p style="margin:0;font-size:10px;color:#c9a84c;letter-spacing:1px;font-family:Arial,sans-serif;">
-        nopainmoldova.org &nbsp;·&nbsp; mssmp.md@gmail.com &nbsp;·&nbsp; Chișinău, Republica Moldova
+        nopainmoldova.org &nbsp;&middot;&nbsp; mssmp.md@gmail.com &nbsp;&middot;&nbsp; Chisinau, Republica Moldova
       </p>
     </td>
   </tr>
@@ -339,7 +352,7 @@ export async function buildTicketEmail(ticket: {
   return {
     from: `"International Pain Congress 2026" <${process.env.GMAIL_USER}>`,
     to: ticket.email,
-    subject: `Biletul tău – International Pain Congress 2026 (#${ticketId})`,
+    subject: `Biletul tau - International Pain Congress 2026 (#${ticketId})`,
     html,
     attachments: [
       {
