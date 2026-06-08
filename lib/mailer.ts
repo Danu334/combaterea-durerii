@@ -2,6 +2,8 @@
 import nodemailer from 'nodemailer'
 import { PDFDocument, rgb } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
+import fs from 'fs'
+import path from 'path'
 
 export const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -34,19 +36,14 @@ const GREEN = rgb(0.165, 0.420, 0.231)   // #2a6b3a (satellite green)
 // ─── Font cache (fetched once per cold start, reused across warm invocations) ─
 let fontCache: { regular: Uint8Array; bold: Uint8Array; italic: Uint8Array } | null = null
 
-async function getFonts() {
+function getFonts() {
   if (fontCache) return fontCache
 
-  const [regular, bold, italic] = await Promise.all([
-    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/static/NotoSans-Regular.ttf').then(r => r.arrayBuffer()),
-    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/static/NotoSans-Bold.ttf').then(r => r.arrayBuffer()),
-    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/static/NotoSans-Italic.ttf').then(r => r.arrayBuffer()),
-  ])
-
+  const fontsDir = path.join(process.cwd(), 'public', 'fonts')
   fontCache = {
-    regular: new Uint8Array(regular),
-    bold:    new Uint8Array(bold),
-    italic:  new Uint8Array(italic),
+    regular: new Uint8Array(fs.readFileSync(path.join(fontsDir, 'NotoSans-Regular.ttf'))),
+    bold:    new Uint8Array(fs.readFileSync(path.join(fontsDir, 'NotoSans-Bold.ttf'))),
+    italic:  new Uint8Array(fs.readFileSync(path.join(fontsDir, 'NotoSans-Italic.ttf'))),
   }
   return fontCache
 }
@@ -70,7 +67,7 @@ export async function buildTicketPdf(ticket: {
   const page = pdfDoc.addPage([W, H])
 
   // ── Embed Unicode-capable fonts (supports ș, ț, ă, î, â) ──────────────────
-  const fonts = await getFonts()
+  const fonts = getFonts()
   const fontRegular = await pdfDoc.embedFont(fonts.regular, { subset: true })
   const fontBold    = await pdfDoc.embedFont(fonts.bold,    { subset: true })
   const fontItalic  = await pdfDoc.embedFont(fonts.italic,  { subset: true })
