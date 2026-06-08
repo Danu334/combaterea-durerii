@@ -4,16 +4,9 @@ import { sql } from '@/lib/db'
 import { z } from 'zod'
 
 // ─── Rate limiting (DB-backed, works across all Vercel instances) ─────────────
-const RATE_LIMIT_WINDOW_MS  = 15 * 60 * 1000  // 15 minutes
-const RATE_LIMIT_MAX         = 5               // max submissions per IP per window
+const RATE_LIMIT_MAX = 5  // max submissions per IP per 15 minutes
 
 async function checkRateLimit(ip: string): Promise<boolean> {
-  await sql`
-    CREATE TABLE IF NOT EXISTS rate_limits (
-      ip TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`
-
   // Clean up old records opportunistically
   await sql`DELETE FROM rate_limits WHERE created_at < NOW() - INTERVAL '15 minutes'`
 
