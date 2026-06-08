@@ -38,35 +38,35 @@ export async function POST(req: NextRequest) {
     const signatureTimestamp = req.headers.get('x-signature-timestamp') ?? ''
     const signatureKey       = process.env.MAIB_SIGNATURE_KEY ?? ''
 
-    console.log('x-signature:', signatureHeader || 'MISSING')
-    console.log('x-timestamp:', signatureTimestamp || 'MISSING')
-    console.log('MAIB_SIGNATURE_KEY set:', !!signatureKey)
+    if (!signatureKey) {
+      console.error('MAIB_SIGNATURE_KEY is not set — rejecting callback')
+      return NextResponse.json({ ok: false }, { status: 500 })
+    }
 
-    // Only validate if ALL three parts are present and non-empty
-    if (signatureHeader && signatureTimestamp && signatureKey) {
-      try {
-        const { MaibCheckoutSdk } = await import('maib-checkout-sdk')
-        const isValid = MaibCheckoutSdk.validateCallbackSignature(
-          rawBody,
-          signatureHeader,
-          signatureTimestamp,
-          signatureKey
-        )
-        console.log('Signature valid:', isValid)
-        if (!isValid) {
-          console.error('Signature mismatch — rejecting')
-          return NextResponse.json({ ok: false }, { status: 400 })
-        }
-      } catch (sigErr) {
-        // Log the error but don't block — MAIB docs say to return 200
-        console.error('Signature validation threw:', sigErr)
-      }
-    } else {
-      console.warn('Skipping signature — missing:', {
+    if (!signatureHeader || !signatureTimestamp) {
+      console.error('Missing signature headers — rejecting callback', {
         signatureHeader: !!signatureHeader,
         signatureTimestamp: !!signatureTimestamp,
-        signatureKey: !!signatureKey,
       })
+      return NextResponse.json({ ok: false }, { status: 400 })
+    }
+
+    try {
+      const { MaibCheckoutSdk } = await import('maib-checkout-sdk')
+      const isValid = MaibCheckoutSdk.validateCallbackSignature(
+        rawBody,
+        signatureHeader,
+        signatureTimestamp,
+        signatureKey
+      )
+      console.log('Signature valid:', isValid)
+      if (!isValid) {
+        console.error('Signature mismatch — rejecting')
+        return NextResponse.json({ ok: false }, { status: 400 })
+      }
+    } catch (sigErr) {
+      console.error('Signature validation threw — rejecting:', sigErr)
+      return NextResponse.json({ ok: false }, { status: 400 })
     }
 
     // ── Find tickets by checkoutId ─────────────────────────────────────────
