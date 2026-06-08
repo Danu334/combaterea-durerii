@@ -2,6 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import DeveloperCredit from "./DeveloperCredit";
 
 const FooterLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
   <li style={{ listStyle: "none" }}>
@@ -191,6 +192,7 @@ const Footer = () => {
         </div>
 
       </div>
+      <DeveloperCredit />
     </footer>
   );
 };
