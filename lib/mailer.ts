@@ -38,9 +38,9 @@ async function getFonts() {
   if (fontCache) return fontCache
 
   const [regular, bold, italic] = await Promise.all([
-    fetch('https://cdn.jsdelivr.net/gh/google/fonts/ofl/notosans/NotoSans-Regular.ttf').then(r => r.arrayBuffer()),
-    fetch('https://cdn.jsdelivr.net/gh/google/fonts/ofl/notosans/NotoSans-Bold.ttf').then(r => r.arrayBuffer()),
-    fetch('https://cdn.jsdelivr.net/gh/google/fonts/ofl/notosans/NotoSans-Italic.ttf').then(r => r.arrayBuffer()),
+    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/static/NotoSans-Regular.ttf').then(r => r.arrayBuffer()),
+    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/static/NotoSans-Bold.ttf').then(r => r.arrayBuffer()),
+    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosans/static/NotoSans-Italic.ttf').then(r => r.arrayBuffer()),
   ])
 
   fontCache = {

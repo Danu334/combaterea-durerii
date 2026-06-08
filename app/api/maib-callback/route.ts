@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
 
     const tickets = await sql`
       SELECT
-        t.id, t.ticket_type, t.price_mdl, t.handzone, t.status,
+        t.id, t.ticket_type, t.price_mdl, t.handzone, t.satellite_workshop, t.status,
         COALESCE(s.nume, r.nume, n.nume)          AS nume,
         COALESCE(s.prenume, r.prenume, n.prenume) AS prenume,
         COALESCE(s.email, r.email, n.email)       AS email
@@ -119,6 +119,7 @@ export async function POST(req: NextRequest) {
             id: ticket.id, prenume: ticket.prenume, nume: ticket.nume,
             email: ticket.email, ticket_type: ticket.ticket_type,
             price_mdl: ticket.price_mdl, handzone: ticket.handzone,
+            satellite_workshop: ticket.satellite_workshop,
           }
           let mailOptions
           try {
