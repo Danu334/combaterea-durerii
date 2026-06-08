@@ -115,11 +115,19 @@ export async function POST(req: NextRequest) {
       const { transporter, buildTicketEmail } = await import('@/lib/mailer')
       for (const ticket of tickets) {
         try {
-          await transporter.sendMail(await buildTicketEmail({
+          const ticketData = {
             id: ticket.id, prenume: ticket.prenume, nume: ticket.nume,
             email: ticket.email, ticket_type: ticket.ticket_type,
             price_mdl: ticket.price_mdl, handzone: ticket.handzone,
-          }))
+          }
+          let mailOptions
+          try {
+            mailOptions = await buildTicketEmail(ticketData)
+          } catch (pdfErr) {
+            console.error(`⚠️ PDF generation failed for ticket #${ticket.id} (sending without attachment):`, pdfErr)
+            mailOptions = await buildTicketEmail(ticketData, true)
+          }
+          await transporter.sendMail(mailOptions)
           console.log(`✅ Email sent → ticket #${ticket.id} → ${ticket.email}`)
         } catch (emailErr) {
           console.error(`❌ Email failed for ticket #${ticket.id}:`, emailErr)

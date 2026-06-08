@@ -38,9 +38,9 @@ async function getFonts() {
   if (fontCache) return fontCache
 
   const [regular, bold, italic] = await Promise.all([
-    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Regular.ttf').then(r => r.arrayBuffer()),
-    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Bold.ttf').then(r => r.arrayBuffer()),
-    fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/apache/roboto/static/Roboto-Italic.ttf').then(r => r.arrayBuffer()),
+    fetch('https://cdn.jsdelivr.net/gh/google/fonts/ofl/notosans/NotoSans-Regular.ttf').then(r => r.arrayBuffer()),
+    fetch('https://cdn.jsdelivr.net/gh/google/fonts/ofl/notosans/NotoSans-Bold.ttf').then(r => r.arrayBuffer()),
+    fetch('https://cdn.jsdelivr.net/gh/google/fonts/ofl/notosans/NotoSans-Italic.ttf').then(r => r.arrayBuffer()),
   ])
 
   fontCache = {
@@ -215,7 +215,7 @@ export async function buildTicketEmail(ticket: {
   price_mdl: number
   handzone: string
   satellite_workshop?: string
-}) {
+}, skipPdf = false) {
   const typeLabel: Record<string, string> = {
     Student: 'Student', Resident: 'Rezident / Doctor', Nurse: 'Asistenta Medicala',
   }
@@ -227,7 +227,7 @@ export async function buildTicketEmail(ticket: {
     ? (SATELLITE_LABELS[ticket.satellite_workshop] ?? ticket.satellite_workshop)
     : null
 
-  const pdfBuffer = await buildTicketPdf(ticket)
+  const pdfBuffer = skipPdf ? null : await buildTicketPdf(ticket)
 
   const html = `
 <!DOCTYPE html>
@@ -354,12 +354,12 @@ export async function buildTicketEmail(ticket: {
     to: ticket.email,
     subject: `Biletul tau - International Pain Congress 2026 (#${ticketId})`,
     html,
-    attachments: [
+    attachments: pdfBuffer ? [
       {
         filename: `bilet-ipc2026-${ticketId}.pdf`,
         content: pdfBuffer,
         contentType: 'application/pdf',
       },
-    ],
+    ] : [],
   }
 }
