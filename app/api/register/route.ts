@@ -245,7 +245,7 @@ export async function POST(req: NextRequest) {
 
     // ── Create MAIB session ───────────────────────────────────────────────
     const { MaibCheckoutSdk, MaibCheckoutApiRequest } = await import('maib-checkout-sdk')
-    const maib = MaibCheckoutApiRequest.create(MaibCheckoutSdk.SANDBOX_BASE_URL)
+    const maib = MaibCheckoutApiRequest.create(MaibCheckoutSdk.PRODUCTION_BASE_URL)
     const auth = await maib.generateToken(
       process.env.MAIB_CLIENT_ID!,
       process.env.MAIB_CLIENT_SECRET!
