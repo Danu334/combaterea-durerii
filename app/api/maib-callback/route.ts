@@ -7,16 +7,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  console.log('=== MAIB CALLBACK HIT ===')
-
   try {
     const rawBody = await req.text()
-
-    // Log all headers to see exactly what MAIB sends
-    const headers: Record<string, string> = {}
-    req.headers.forEach((val, key) => { headers[key] = val })
-    console.log('All headers:', JSON.stringify(headers))
-    console.log('Raw body:', rawBody)
 
     if (!rawBody) {
       return NextResponse.json({ ok: false, error: 'Empty body' }, { status: 400 })
@@ -26,12 +18,8 @@ export async function POST(req: NextRequest) {
     try {
       data = JSON.parse(rawBody)
     } catch {
-      console.error('Failed to parse JSON body')
       return NextResponse.json({ ok: false, error: 'Invalid JSON' }, { status: 400 })
     }
-
-    console.log('paymentStatus:', data.paymentStatus)
-    console.log('checkoutId:', data.checkoutId)
 
     // ── Signature validation ───────────────────────────────────────────────
     const signatureHeader    = req.headers.get('x-signature') ?? ''
@@ -44,10 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (!signatureHeader || !signatureTimestamp) {
-      console.error('Missing signature headers — rejecting callback', {
-        signatureHeader: !!signatureHeader,
-        signatureTimestamp: !!signatureTimestamp,
-      })
+      console.error('Missing signature headers — rejecting callback')
       return NextResponse.json({ ok: false }, { status: 400 })
     }
 
@@ -59,7 +44,6 @@ export async function POST(req: NextRequest) {
         signatureTimestamp,
         signatureKey
       )
-      console.log('Signature valid:', isValid)
       if (!isValid) {
         console.error('Signature mismatch — rejecting')
         return NextResponse.json({ ok: false }, { status: 400 })
@@ -72,8 +56,7 @@ export async function POST(req: NextRequest) {
     // ── Find tickets by checkoutId ─────────────────────────────────────────
     const checkoutId = data.checkoutId as string
     if (!checkoutId) {
-      console.error('No checkoutId in payload')
-      return NextResponse.json({ ok: true }) // return 200 to stop MAIB retrying
+      return NextResponse.json({ ok: true })
     }
 
     const tickets = await sql`
@@ -89,14 +72,8 @@ export async function POST(req: NextRequest) {
       WHERE t.maib_session_id = ${checkoutId}
     `
 
-    console.log('Tickets found:', tickets.length, 'for checkoutId:', checkoutId)
-
     if (tickets.length === 0) {
-      // Also try searching by partial match in case of formatting difference
-      const allPending = await sql`
-        SELECT id, maib_session_id FROM tickets WHERE status = 'pending' LIMIT 10
-      `
-      console.log('Pending tickets in DB:', JSON.stringify(allPending))
+      console.error('No tickets found for checkoutId:', checkoutId)
       return NextResponse.json({ ok: true })
     }
 
@@ -108,9 +85,8 @@ export async function POST(req: NextRequest) {
       UPDATE tickets SET status = ${newStatus}
       WHERE maib_session_id = ${checkoutId}
     `
-    console.log(`Updated ${tickets.length} ticket(s) to "${newStatus}"`)
 
-    // ── Send emails ────────────────────────────────────────────────────────
+    // ── Send confirmation emails ───────────────────────────────────────────
     if (newStatus === 'paid') {
       const { transporter, buildTicketEmail } = await import('@/lib/mailer')
       for (const ticket of tickets) {
@@ -125,23 +101,20 @@ export async function POST(req: NextRequest) {
           try {
             mailOptions = await buildTicketEmail(ticketData)
           } catch (pdfErr) {
-            console.error(`⚠️ PDF generation failed for ticket #${ticket.id} (sending without attachment):`, pdfErr)
+            console.error(`PDF generation failed for ticket #${ticket.id}:`, pdfErr)
             mailOptions = await buildTicketEmail(ticketData, true)
           }
           await transporter.sendMail(mailOptions)
-          console.log(`✅ Email sent → ticket #${ticket.id} → ${ticket.email}`)
         } catch (emailErr) {
-          console.error(`❌ Email failed for ticket #${ticket.id}:`, emailErr)
+          console.error(`Email failed for ticket #${ticket.id}:`, emailErr)
         }
       }
     }
 
-    console.log('=== MAIB CALLBACK COMPLETE ===')
     return NextResponse.json({ ok: true })
 
   } catch (err) {
     console.error('/api/maib-callback error:', err)
-    // Always return 200 to MAIB so it doesn't keep retrying
     return NextResponse.json({ ok: true })
   }
 }

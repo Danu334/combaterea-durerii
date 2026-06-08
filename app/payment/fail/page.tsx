@@ -34,7 +34,7 @@ function FailContent() {
           }}>
             Încearcă din nou
           </Link>
-          <a href="mailto:mssmp.md@gmail.com" style={{
+          <a href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? 'mssmp.md@gmail.com'}`} style={{
             background: '#fff', color: '#1a3a6b',
             padding: '12px 28px', borderRadius: '8px',
             textDecoration: 'none', fontWeight: '500', fontSize: '15px',

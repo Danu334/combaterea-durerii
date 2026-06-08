@@ -120,9 +120,6 @@ export async function POST(req: NextRequest) {
       if (type === 'Nurse'    && !('sectie'        in f)) return NextResponse.json({ ok: false, error: `Formularul ${i + 1}: câmp sectie lipsă.` }, { status: 400 })
     }
 
-    // ── Ensure satellite_workshop column exists ────────────────────────────
-    await sql`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS satellite_workshop TEXT NOT NULL DEFAULT 'none'`
-
     // ── Satellite capacity check ───────────────────────────────────────────
     const requestedSatellites = forms
       .map(f => f.satellite)
