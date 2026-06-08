@@ -41,6 +41,35 @@ export async function POST(req: NextRequest) {
     // ── 1. Ensure satellite_workshop column exists ─────────────────────────
     await sql`ALTER TABLE tickets ADD COLUMN IF NOT EXISTS satellite_workshop TEXT NOT NULL DEFAULT 'none'`
 
+    // ── 1b. Enforce satellite workshop capacity server-side ────────────────
+    const SATELLITE_CAPACITY = 30
+    const requestedSatellites = forms
+      .map(f => (f as unknown as Record<string, string>).satellite || 'none')
+      .filter(s => s !== 'none')
+
+    if (requestedSatellites.length > 0) {
+      const uniqueRequested = [...new Set(requestedSatellites)]
+      const capacityRows = await sql`
+        SELECT satellite_workshop, COUNT(*)::int AS count
+        FROM tickets
+        WHERE satellite_workshop = ANY(${uniqueRequested})
+          AND status IN ('pending', 'paid')
+        GROUP BY satellite_workshop
+      `
+      const currentCounts: Record<string, number> = {}
+      for (const row of capacityRows) currentCounts[row.satellite_workshop] = row.count
+
+      for (const sw of requestedSatellites) {
+        const used = currentCounts[sw] ?? 0
+        if (used >= SATELLITE_CAPACITY) {
+          return NextResponse.json(
+            { ok: false, error: `Locurile pentru workshopul satellite "${sw}" sunt epuizate.` },
+            { status: 409 }
+          )
+        }
+      }
+    }
+
     // ── 2. Insert persons + tickets (pending) ─────────────────────────────
     const ticketIds: number[] = []
     let grandTotal = 0

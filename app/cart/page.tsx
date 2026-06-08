@@ -6,7 +6,6 @@ import Footer from '@/components/Footer'
 import Navbar from '@/components/Navbar'
 import { useCart, TicketType } from '@/context/CartContext'
 
-// ─── Satellite workshop capacity (tracked in localStorage for demo; in prod use DB) ───
 const SATELLITE_CAPACITY = 30
 const SATELLITE_WORKSHOPS = [
   {
@@ -97,16 +96,6 @@ function useIsMobile() {
   return isMobile
 }
 
-// Track satellite registrations in sessionStorage (per session).
-// In production this should be a DB query.
-function getSatelliteCount(id: string): number {
-  if (typeof window === 'undefined') return 0
-  return parseInt(sessionStorage.getItem(`satellite_count_${id}`) || '0', 10)
-}
-function incrementSatelliteCount(id: string) {
-  const current = getSatelliteCount(id)
-  sessionStorage.setItem(`satellite_count_${id}`, String(current + 1))
-}
 
 function Field({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   const [focused, setFocused] = useState(false)
@@ -292,10 +281,10 @@ export default function CartPage() {
 
   useEffect(() => {
     setHydrated(true)
-    // Load satellite counts
-    const counts: Record<string, number> = {}
-    SATELLITE_WORKSHOPS.forEach(sw => { counts[sw.id] = getSatelliteCount(sw.id) })
-    setSatelliteCounts(counts)
+    fetch('/api/satellite-capacity')
+      .then(r => r.json())
+      .then(data => setSatelliteCounts(data))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -339,14 +328,6 @@ export default function CartPage() {
         if (!f.spital?.trim()) return `${label}: completează Spitalul`
         if (!f.sectie?.trim()) return `${label}: completează Secția`
       }
-      // Validate satellite capacity at submit time
-      if (f.satellite && f.satellite !== 'none') {
-        const count = getSatelliteCount(f.satellite)
-        if (count >= SATELLITE_CAPACITY) {
-          const sw = SATELLITE_WORKSHOPS.find(s => s.id === f.satellite)
-          return `${label}: locurile pentru "${sw?.label}" sunt epuizate.`
-        }
-      }
     }
     return null
   }
@@ -365,12 +346,6 @@ export default function CartPage() {
       })
       const data = await res.json()
       if (data.ok && data.checkoutUrl) {
-        // Increment satellite counts for selected workshops
-        forms.forEach(f => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const sat = (f as any).satellite
-          if (sat && sat !== 'none') incrementSatelliteCount(sat)
-        })
         clearCart()
         window.location.href = data.checkoutUrl
       } else {
