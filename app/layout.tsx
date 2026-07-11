@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { CartProvider } from '@/context/CartContext'
 
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ro" style={{ height: '100%' }}>
       <body style={{ margin: 0, padding: 0, height: '100%', overflowX: 'hidden' }}>
         <CartProvider>{children}</CartProvider>
+        <Analytics />
       </body>
     </html>
   )

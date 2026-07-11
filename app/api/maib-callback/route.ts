@@ -1,6 +1,7 @@
 // app/api/maib-callback/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
+import { alertAdmin } from '@/lib/alert'
 
 export async function GET() {
   return NextResponse.json({ ok: true, message: 'Callback endpoint is alive.' })
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     const signatureKey       = process.env.MAIB_SIGNATURE_KEY ?? ''
 
     if (!signatureKey) {
-      console.error('MAIB_SIGNATURE_KEY is not set — rejecting callback')
+      await alertAdmin('maib-callback: MAIB_SIGNATURE_KEY not set', {})
       return NextResponse.json({ ok: false }, { status: 500 })
     }
 
@@ -45,11 +46,13 @@ export async function POST(req: NextRequest) {
         signatureKey
       )
       if (!isValid) {
-        console.error('Signature mismatch — rejecting')
+        await alertAdmin('maib-callback: signature mismatch — rejected', { checkoutId: data.checkoutId })
         return NextResponse.json({ ok: false }, { status: 400 })
       }
     } catch (sigErr) {
-      console.error('Signature validation threw — rejecting:', sigErr)
+      await alertAdmin('maib-callback: signature validation threw — rejected', {
+        error: sigErr instanceof Error ? sigErr.message : String(sigErr),
+      })
       return NextResponse.json({ ok: false }, { status: 400 })
     }
 
@@ -73,7 +76,7 @@ export async function POST(req: NextRequest) {
     `
 
     if (tickets.length === 0) {
-      console.error('No tickets found for checkoutId:', checkoutId)
+      await alertAdmin('maib-callback: no tickets found for checkoutId', { checkoutId })
       return NextResponse.json({ ok: true })
     }
 
@@ -101,20 +104,31 @@ export async function POST(req: NextRequest) {
           try {
             mailOptions = await buildTicketEmail(ticketData)
           } catch (pdfErr) {
-            console.error(`PDF generation failed for ticket #${ticket.id}:`, pdfErr)
+            await alertAdmin('maib-callback: PDF generation failed, sending without attachment', {
+              ticketId: ticket.id,
+              error: pdfErr instanceof Error ? pdfErr.message : String(pdfErr),
+            })
             mailOptions = await buildTicketEmail(ticketData, true)
           }
           await transporter.sendMail(mailOptions)
+          console.log(JSON.stringify({ level: 'info', event: 'ticket-email-sent', ticketId: ticket.id }))
         } catch (emailErr) {
-          console.error(`Email failed for ticket #${ticket.id}:`, emailErr)
+          await alertAdmin('maib-callback: ticket paid but confirmation email failed to send', {
+            ticketId: ticket.id,
+            email: ticket.email,
+            error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+          })
         }
       }
     }
 
+    console.log(JSON.stringify({ level: 'info', event: 'maib-callback-processed', checkoutId, status: newStatus }))
     return NextResponse.json({ ok: true })
 
   } catch (err) {
-    console.error('/api/maib-callback error:', err)
+    await alertAdmin('maib-callback: unhandled error', {
+      error: err instanceof Error ? err.message : String(err),
+    })
     return NextResponse.json({ ok: true })
   }
 }

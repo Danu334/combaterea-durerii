@@ -1,6 +1,7 @@
 // app/api/register/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
+import { alertAdmin } from '@/lib/alert'
 import { z } from 'zod'
 
 // ─── Rate limiting (DB-backed, works across all Vercel instances) ─────────────
@@ -237,7 +238,7 @@ export async function POST(req: NextRequest) {
     const { MaibCheckoutSdk, MaibCheckoutApiRequest } = await import('maib-checkout-sdk')
     const maib = MaibCheckoutApiRequest.create(
   process.env.MAIB_ENV === 'production'
-    ? MaibCheckoutSdk.PRODUCTION_BASE_URL
+    ? MaibCheckoutSdk.DEFAULT_BASE_URL
     : MaibCheckoutSdk.SANDBOX_BASE_URL
 )
     const auth = await maib.generateToken(
@@ -254,7 +255,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, checkoutUrl: session.checkoutUrl })
 
   } catch (err) {
-    console.error('/api/register error:', err)
+    await alertAdmin('register: checkout session creation failed', {
+      error: err instanceof Error ? err.message : String(err),
+    })
     return NextResponse.json({ ok: false, error: 'Eroare internă. Încearcă din nou.' }, { status: 500 })
   }
 }
