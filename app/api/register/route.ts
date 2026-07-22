@@ -8,17 +8,27 @@ import { z } from 'zod'
 const RATE_LIMIT_MAX = 5  // max submissions per IP per 15 minutes
 
 async function checkRateLimit(ip: string): Promise<boolean> {
-  // Clean up old records opportunistically
-  await sql`DELETE FROM rate_limits WHERE created_at < NOW() - INTERVAL '15 minutes'`
+  // Fail open: a rate-limiting infrastructure error must never block a
+  // legitimate registration. If the rate_limits table/sequence is
+  // unreachable we allow the request and alert the admin instead.
+  try {
+    // Clean up old records opportunistically
+    await sql`DELETE FROM rate_limits WHERE created_at < NOW() - INTERVAL '15 minutes'`
 
-  const rows = await sql`
-    SELECT COUNT(*)::int AS count FROM rate_limits
-    WHERE ip = ${ip} AND created_at > NOW() - INTERVAL '15 minutes'`
+    const rows = await sql`
+      SELECT COUNT(*)::int AS count FROM rate_limits
+      WHERE ip = ${ip} AND created_at > NOW() - INTERVAL '15 minutes'`
 
-  if (rows[0].count >= RATE_LIMIT_MAX) return false
+    if (rows[0].count >= RATE_LIMIT_MAX) return false
 
-  await sql`INSERT INTO rate_limits (ip) VALUES (${ip})`
-  return true
+    await sql`INSERT INTO rate_limits (ip) VALUES (${ip})`
+    return true
+  } catch (err) {
+    await alertAdmin('register: rate limiting unavailable (failing open)', {
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return true
+  }
 }
 
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
