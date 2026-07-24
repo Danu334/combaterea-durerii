@@ -3,6 +3,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import DeveloperCredit from "./DeveloperCredit";
+import PaymentLogos from "./PaymentLogos";
 
 const FooterLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
   <li style={{ listStyle: "none" }}>
@@ -159,11 +160,24 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom bar — flush to edges */}
+        {/* Accepted payment methods (required by maib e-commerce integration) */}
         <div style={{
           borderTop: "1px solid #1f2937",
           marginTop: "32px",
-          padding: "20px 0",
+          padding: "20px 0 0",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: "12px",
+        }}>
+          <span style={{ color: "#9ca3af", fontSize: "12px" }}>Plăți securizate procesate prin</span>
+          <PaymentLogos />
+        </div>
+
+        {/* Bottom bar — flush to edges */}
+        <div style={{
+          marginTop: "16px",
+          padding: "16px 0 20px",
           display: "flex",
           flexWrap: "wrap",
           justifyContent: "space-between",
@@ -175,8 +189,8 @@ const Footer = () => {
           </p>
           <div style={{ display: "flex", gap: "24px" }}>
             {[
-              { label: "Termeni și Condiții", href: "#" },
-              { label: "Politică Privacy", href: "#" },
+              { label: "Termeni și Condiții", href: "/termeni-si-conditii" },
+              { label: "Politică Privacy", href: "/termeni-si-conditii#confidentialitate" },
             ].map(({ label, href }) => (
               <Link
                 key={label}

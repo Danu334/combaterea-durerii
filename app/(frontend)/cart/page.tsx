@@ -276,6 +276,7 @@ export default function CartPage() {
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [satelliteCounts, setSatelliteCounts] = useState<Record<string, number>>({})
 
@@ -337,6 +338,7 @@ export default function CartPage() {
     setError(null)
     const validationError = validateForms()
     if (validationError) { setError(validationError); return }
+    if (!acceptedTerms) { setError('Trebuie să accepți Termenii și Condițiile pentru a continua la plată.'); return }
     setLoading(true)
     try {
       const res = await fetch('/api/register', {
@@ -398,6 +400,27 @@ export default function CartPage() {
         <Link href="/registration" style={{ background: '#1a3a6b', color: '#fff', padding: '12px 32px', borderRadius: '8px', textDecoration: 'none', fontWeight: '500' }}>← Înapoi la înregistrare</Link>
       </main>
       <Footer />
+    </div>
+  )
+
+  const termsCheckbox = (
+    <div
+      onClick={() => setAcceptedTerms(v => !v)}
+      style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', userSelect: 'none' }}
+    >
+      <Checkbox checked={acceptedTerms} />
+      <span style={{ fontSize: '12px', color: '#555', lineHeight: 1.45 }}>
+        Am citit și sunt de acord cu{' '}
+        <a
+          href="/termeni-si-conditii"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          style={{ color: '#1a3a6b', textDecoration: 'underline' }}
+        >
+          Termenii și Condițiile
+        </a>.
+      </span>
     </div>
   )
 
@@ -471,7 +494,8 @@ export default function CartPage() {
               </div>
 
               <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100, background: '#fff', borderTop: '1px solid #eee', padding: '12px 16px', boxShadow: '0 -4px 16px rgba(0,0,0,0.08)' }}>
-                <button type="submit" disabled={loading} style={{ width: '100%', padding: '15px', background: loading ? '#888' : '#1a3a6b', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}>
+                <div style={{ marginBottom: '10px' }}>{termsCheckbox}</div>
+                <button type="submit" disabled={loading || !acceptedTerms} style={{ width: '100%', padding: '15px', background: (loading || !acceptedTerms) ? '#9aa5b5' : '#1a3a6b', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: (loading || !acceptedTerms) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}>
                   {loading ? 'Se salvează...' : `Finalizează înregistrarea — ${formatMDL(total)}`}
                 </button>
                 <p style={{ fontSize: '11px', color: '#aaa', textAlign: 'center', margin: '6px 0 0' }}>Datele tale sunt salvate securizat.</p>
@@ -528,7 +552,8 @@ export default function CartPage() {
                     <span style={{ fontSize: '15px', fontWeight: '700', color: '#1a3a6b' }}>{formatMDL(total)}</span>
                   </div>
                 </div>
-                <button type="submit" disabled={loading} style={{ marginTop: '1.5rem', width: '100%', padding: '14px', background: loading ? '#888' : '#1a3a6b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}>
+                <div style={{ marginTop: '1.25rem' }}>{termsCheckbox}</div>
+                <button type="submit" disabled={loading || !acceptedTerms} style={{ marginTop: '1rem', width: '100%', padding: '14px', background: (loading || !acceptedTerms) ? '#9aa5b5' : '#1a3a6b', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: (loading || !acceptedTerms) ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'background 0.2s' }}>
                   {loading ? 'Se salvează...' : 'Finalizează înregistrarea →'}
                 </button>
                 <p style={{ fontSize: '11px', color: '#aaa', textAlign: 'center', marginTop: '12px' }}>Datele tale sunt salvate securizat.</p>
