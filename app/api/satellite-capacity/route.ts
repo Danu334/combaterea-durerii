@@ -1,21 +1,11 @@
 import { NextResponse } from 'next/server'
-import { sql } from '@/lib/db'
+import { getWorkshopSeatCounts } from '@/lib/capacity'
 
 export const revalidate = 0
 
+// Occupied seats per workshop, keyed by workshop id — satellite and hands-on
+// alike. Read-only: expired pending rows are excluded from the count here, and
+// actually released by the cleanup in lib/capacity.ts.
 export async function GET() {
-  const rows = await sql`
-    SELECT satellite_workshop, COUNT(*)::int AS count
-    FROM tickets
-    WHERE satellite_workshop != 'none'
-      AND status IN ('pending', 'paid')
-    GROUP BY satellite_workshop
-  `
-
-  const counts: Record<string, number> = {}
-  for (const row of rows) {
-    counts[row.satellite_workshop] = row.count
-  }
-
-  return NextResponse.json(counts)
+  return NextResponse.json(await getWorkshopSeatCounts())
 }

@@ -6,7 +6,10 @@ import Footer from '@/components/Footer'
 import Navbar from '@/components/Navbar'
 import { useCart, TicketType } from '@/context/CartContext'
 
+// Kept in sync by hand with lib/capacity.ts — that module is server-only
+// (it imports the DB client), so this client component can't import from it.
 const SATELLITE_CAPACITY = 30
+const HANDZONE_CAPACITY  = 10
 const SATELLITE_WORKSHOPS = [
   {
     id: 'y2y',
@@ -125,10 +128,10 @@ function Checkbox({ checked }: { checked: boolean }) {
   )
 }
 
-function TicketForm({ ticketType, ticketName, index, value, onChange, isMobile, satelliteCounts }: {
+function TicketForm({ ticketType, ticketName, index, value, onChange, isMobile, workshopCounts }: {
   ticketType: TicketType; ticketName: string; index: number
   value: AnyForm; onChange: (v: AnyForm) => void; isMobile: boolean
-  satelliteCounts: Record<string, number>
+  workshopCounts: Record<string, number>
 }) {
   const set = (field: string, val: string) => onChange({ ...value, [field]: val } as AnyForm)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,7 +200,7 @@ function TicketForm({ ticketType, ticketName, index, value, onChange, isMobile, 
         </div>
 
         {SATELLITE_WORKSHOPS.map(sw => {
-          const count = satelliteCounts[sw.id] ?? 0
+          const count = workshopCounts[sw.id] ?? 0
           const spotsLeft = SATELLITE_CAPACITY - count
           const isFull = spotsLeft <= 0
           const isSelected = v.satellite === sw.id
@@ -241,21 +244,48 @@ function TicketForm({ ticketType, ticketName, index, value, onChange, isMobile, 
               +1.000 MDL / workshop
             </span>
           </p>
+          <p style={{ margin: '-4px 0 10px', fontSize: '12px', color: '#888' }}>
+            Locuri limitate – max. {HANDZONE_CAPACITY} persoane per workshop.
+          </p>
           <div onClick={() => set('handzone', 'none')} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', marginBottom: '8px', borderRadius: '10px', border: `1.5px solid ${v.handzone === 'none' ? '#1a3a6b' : '#e8e8e8'}`, background: v.handzone === 'none' ? '#f0f4ff' : '#f9f9f9', cursor: 'pointer', userSelect: 'none' }}>
             <Radio selected={v.handzone === 'none'} />
             <span style={{ fontSize: '13px', color: '#555' }}>Fără workshop cu plată</span>
           </div>
-          {HANDZONE_OPTIONS.map(opt => (
-            <div key={opt.value} onClick={() => set('handzone', opt.value)} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 14px', marginBottom: '8px', borderRadius: '10px', border: `1.5px solid ${v.handzone === opt.value ? '#1a3a6b' : '#e8e8e8'}`, background: v.handzone === opt.value ? '#f0f4ff' : '#f9f9f9', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}>
-              <Radio selected={v.handzone === opt.value} />
-              <div>
-                <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: '#000', lineHeight: 1.4 }}>{opt.label}</p>
-                <p style={{ margin: '3px 0 3px', fontSize: '12px', color: '#777', lineHeight: 1.4 }}>{opt.description}</p>
-                <p style={{ margin: '0 0 2px', fontSize: '11px', color: '#999' }}>🎤 {opt.speaker} &nbsp;·&nbsp; 📍 {opt.location} &nbsp;·&nbsp; 🗓 {opt.date}</p>
-                <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#c9a84c', fontWeight: '600' }}>+1.000,00 MDL</p>
+          {HANDZONE_OPTIONS.map(opt => {
+            const count = workshopCounts[opt.value] ?? 0
+            const spotsLeft = HANDZONE_CAPACITY - count
+            const isFull = spotsLeft <= 0
+            const isSelected = v.handzone === opt.value
+
+            return (
+              <div
+                key={opt.value}
+                onClick={() => !isFull && set('handzone', opt.value)}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 14px', marginBottom: '8px',
+                  borderRadius: '10px', border: `1.5px solid ${isSelected ? '#1a3a6b' : isFull ? '#f0e0e0' : '#e8e8e8'}`,
+                  background: isSelected ? '#f0f4ff' : isFull ? '#fff8f8' : '#f9f9f9',
+                  cursor: isFull ? 'not-allowed' : 'pointer', userSelect: 'none', transition: 'all 0.15s',
+                  opacity: isFull ? 0.85 : 1,
+                }}
+              >
+                <Radio selected={isSelected} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <p style={{ margin: 0, fontSize: '13px', fontWeight: '600', color: isFull ? '#999' : '#000', lineHeight: 1.4 }}>{opt.label}</p>
+                    {isFull ? (
+                      <span style={{ fontSize: '11px', background: '#c0392b', color: '#fff', padding: '2px 8px', borderRadius: '20px', whiteSpace: 'nowrap', flexShrink: 0 }}>Locuri epuizate</span>
+                    ) : (
+                      <span style={{ fontSize: '11px', color: '#2a6b3a', fontWeight: '600', whiteSpace: 'nowrap', flexShrink: 0 }}>{spotsLeft} locuri rămase</span>
+                    )}
+                  </div>
+                  <p style={{ margin: '3px 0 3px', fontSize: '12px', color: '#777', lineHeight: 1.4 }}>{opt.description}</p>
+                  <p style={{ margin: '0 0 2px', fontSize: '11px', color: '#999' }}>🎤 {opt.speaker} &nbsp;·&nbsp; 📍 {opt.location} &nbsp;·&nbsp; 🗓 {opt.date}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: isFull ? '#bbb' : '#c9a84c', fontWeight: '600' }}>+1.000,00 MDL</p>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -278,13 +308,13 @@ export default function CartPage() {
   const [error, setError] = useState<string | null>(null)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [hydrated, setHydrated] = useState(false)
-  const [satelliteCounts, setSatelliteCounts] = useState<Record<string, number>>({})
+  const [workshopCounts, setWorkshopCounts] = useState<Record<string, number>>({})
 
   useEffect(() => {
     setHydrated(true)
     fetch('/api/satellite-capacity')
       .then(r => r.json())
-      .then(data => setSatelliteCounts(data))
+      .then(data => setWorkshopCounts(data))
       .catch(() => {})
   }, [])
 
@@ -451,7 +481,7 @@ export default function CartPage() {
                     <TicketForm
                       ticketType={item.type} ticketName={item.name} index={i}
                       value={forms[i]} onChange={val => updateForm(i, val)}
-                      isMobile={true} satelliteCounts={satelliteCounts}
+                      isMobile={true} workshopCounts={workshopCounts}
                     />
                   )}
                   <button type="button"
@@ -510,7 +540,7 @@ export default function CartPage() {
                       <TicketForm
                         ticketType={item.type} ticketName={item.name} index={i}
                         value={forms[i]} onChange={val => updateForm(i, val)}
-                        isMobile={false} satelliteCounts={satelliteCounts}
+                        isMobile={false} workshopCounts={workshopCounts}
                       />
                     )}
                     <button type="button"

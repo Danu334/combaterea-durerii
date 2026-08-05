@@ -2,6 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { alertAdmin } from '@/lib/alert'
+import { maibClient } from '@/lib/maib'
+import {
+  HANDZONE_CAPACITY,
+  SATELLITE_CAPACITY,
+  expireStalePendingTickets,
+  getWorkshopSeatCounts,
+} from '@/lib/capacity'
 import { z } from 'zod'
 
 // ─── Rate limiting (DB-backed, works across all Vercel instances) ─────────────
@@ -67,9 +74,8 @@ const BodySchema = z.object({
 type HandzoneOption = 'none' | 'botulinum' | 'locoregional' | 'locoregional-periop'
 type SatelliteOption = 'none' | 'y2y' | 'imagistica'
 
-const HANDZONE_PRICE    = 1000
-const SATELLITE_CAPACITY = 30
-const BASE_URL           = 'https://congress.nopainmoldova.org'
+const HANDZONE_PRICE = 1000
+const BASE_URL       = 'https://congress.nopainmoldova.org'
 
 function normalizePhone(raw: string): string {
   let digits = raw.replace(/\D/g, '')
@@ -124,30 +130,58 @@ export async function POST(req: NextRequest) {
       if (type === 'Nurse'    && !('sectie'        in f)) return NextResponse.json({ ok: false, error: `Formularul ${i + 1}: câmp sectie lipsă.` }, { status: 400 })
     }
 
+    // ── Release abandoned checkouts ────────────────────────────────────────
+    // Opportunistic, like the rate-limit cleanup above: a registration attempt
+    // is exactly when stale seats need to be back on the market. Best-effort —
+    // getWorkshopSeatCounts() ignores expired rows regardless, so a failure
+    // here only leaves tidy-up undone, never a wrong capacity.
+    try {
+      const released = await expireStalePendingTickets()
+      if (released > 0) {
+        console.log(JSON.stringify({ level: 'info', event: 'pending-tickets-expired', released }))
+      }
+    } catch (err) {
+      await alertAdmin('register: expiring stale pending tickets failed', {
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+
+    const seatCounts = await getWorkshopSeatCounts()
+
+    // ── Hands-on (handzone) workshop capacity check ────────────────────────
+    // Each hands-on workshop is limited to HANDZONE_CAPACITY participants.
+    // We count seats already held plus the ones requested in this same cart so
+    // a single order can never overbook a workshop.
+    const requestedHandzones = forms
+      .map(f => f.handzone)
+      .filter((h): h is Exclude<HandzoneOption, 'none'> => h !== 'none')
+
+    const hzRequested: Record<string, number> = {}
+    for (const h of requestedHandzones) hzRequested[h] = (hzRequested[h] ?? 0) + 1
+
+    for (const [hz, wanted] of Object.entries(hzRequested)) {
+      if ((seatCounts[hz] ?? 0) + wanted > HANDZONE_CAPACITY) {
+        return NextResponse.json(
+          { ok: false, error: `Locurile pentru workshopul hands-on "${hz}" sunt epuizate.` },
+          { status: 409 }
+        )
+      }
+    }
+
     // ── Satellite capacity check ───────────────────────────────────────────
     const requestedSatellites = forms
       .map(f => f.satellite)
       .filter((s): s is Exclude<SatelliteOption, 'none'> => s !== 'none')
 
-    if (requestedSatellites.length > 0) {
-      const uniqueRequested = [...new Set(requestedSatellites)]
-      const capacityRows = await sql`
-        SELECT satellite_workshop, COUNT(*)::int AS count
-        FROM tickets
-        WHERE satellite_workshop = ANY(${uniqueRequested})
-          AND status IN ('pending', 'paid')
-        GROUP BY satellite_workshop`
+    const swRequested: Record<string, number> = {}
+    for (const s of requestedSatellites) swRequested[s] = (swRequested[s] ?? 0) + 1
 
-      const currentCounts: Record<string, number> = {}
-      for (const row of capacityRows) currentCounts[row.satellite_workshop] = row.count
-
-      for (const sw of requestedSatellites) {
-        if ((currentCounts[sw] ?? 0) >= SATELLITE_CAPACITY) {
-          return NextResponse.json(
-            { ok: false, error: `Locurile pentru workshopul satellite "${sw}" sunt epuizate.` },
-            { status: 409 }
-          )
-        }
+    for (const [sw, wanted] of Object.entries(swRequested)) {
+      if ((seatCounts[sw] ?? 0) + wanted > SATELLITE_CAPACITY) {
+        return NextResponse.json(
+          { ok: false, error: `Locurile pentru workshopul satellite "${sw}" sunt epuizate.` },
+          { status: 409 }
+        )
       }
     }
 
@@ -245,17 +279,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Create MAIB session ───────────────────────────────────────────────
-    const { MaibCheckoutSdk, MaibCheckoutApiRequest } = await import('maib-checkout-sdk')
-    const maib = MaibCheckoutApiRequest.create(
-  process.env.MAIB_ENV === 'production'
-    ? MaibCheckoutSdk.DEFAULT_BASE_URL
-    : MaibCheckoutSdk.SANDBOX_BASE_URL
-)
-    const auth = await maib.generateToken(
-      process.env.MAIB_CLIENT_ID!,
-      process.env.MAIB_CLIENT_SECRET!
-    )
-    const session = await maib.checkoutRegister(checkoutData, auth.accessToken)
+    const { maib, accessToken } = await maibClient()
+    const session = await maib.checkoutRegister(checkoutData, accessToken)
 
     // ── Store checkoutId on tickets ───────────────────────────────────────
     await sql`
