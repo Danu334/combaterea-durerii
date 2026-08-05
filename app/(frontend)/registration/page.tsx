@@ -6,11 +6,14 @@ import Footer from '@/components/Footer'
 import Navbar from '@/components/Navbar'
 import { useCart, CartItem } from '@/context/CartContext'
 import { useRouter } from 'next/navigation'
+import { TICKET_PRICES_MDL, formatMDL } from '@/lib/pricing'
 
+// Display only — /api/register charges from TICKET_PRICES_MDL regardless of
+// what the cart sends, so these can never quote a price we don't honour.
 const products: CartItem[] = [
-  { id: 1, name: 'Înregistrare Student',  price: '1.500,00 MDL', priceNum: 1500, type: 'Student',  typeColor: '#c9a84c' },
-  { id: 2, name: 'Înregistrare Standard', price: '2.000,00 MDL', priceNum: 2000, type: 'Resident', typeColor: '#c9a84c' },
-  { id: 3, name: 'Înregistrare Nurse',    price: '1.500,00 MDL', priceNum: 1500, type: 'Nurse',    typeColor: '#c9a84c' },
+  { id: 1, name: 'Înregistrare Student',  price: formatMDL(TICKET_PRICES_MDL.Student),  priceNum: TICKET_PRICES_MDL.Student,  type: 'Student',  typeColor: '#c9a84c' },
+  { id: 2, name: 'Înregistrare Standard', price: formatMDL(TICKET_PRICES_MDL.Resident), priceNum: TICKET_PRICES_MDL.Resident, type: 'Resident', typeColor: '#c9a84c' },
+  { id: 3, name: 'Înregistrare Nurse',    price: formatMDL(TICKET_PRICES_MDL.Nurse),    priceNum: TICKET_PRICES_MDL.Nurse,    type: 'Nurse',    typeColor: '#c9a84c' },
 ]
 
 const descriptions: Record<number, string> = {

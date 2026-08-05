@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Footer from '@/components/Footer'
 import Navbar from '@/components/Navbar'
 import { useCart, TicketType } from '@/context/CartContext'
+import { HANDZONE_PRICE_MDL, formatMDL } from '@/lib/pricing'
 
 // Kept in sync by hand with lib/capacity.ts — that module is server-only
 // (it imports the DB client), so this client component can't import from it.
@@ -41,7 +42,7 @@ interface DoctorForm  extends BaseForm { spital: string; specialitate: string }
 interface NurseForm   extends BaseForm { spital: string; sectie: string }
 type AnyForm = StudentForm | DoctorForm | NurseForm
 
-const HANDZONE_PRICE = 1000
+const HANDZONE_PRICE = HANDZONE_PRICE_MDL
 
 const HANDZONE_OPTIONS: { value: HandzoneOption; label: string; description: string; speaker: string; location: string; date: string }[] = [
   {
@@ -330,7 +331,6 @@ export default function CartPage() {
   const handzoneCount = forms.filter(f => f.handzone !== 'none').length
   const handzoneTotal = handzoneCount * HANDZONE_PRICE
   const total = ticketTotal + handzoneTotal
-  const formatMDL = (n: number) => n.toLocaleString('ro-MD', { minimumFractionDigits: 2 }) + ' MDL'
 
   const getHandzoneLabel = (val: HandzoneOption) => {
     if (val === 'none') return null

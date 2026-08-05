@@ -9,6 +9,7 @@ import {
   expireStalePendingTickets,
   getWorkshopSeatCounts,
 } from '@/lib/capacity'
+import { TICKET_PRICES_MDL, ticketPrice } from '@/lib/pricing'
 import { z } from 'zod'
 
 // ─── Rate limiting (DB-backed, works across all Vercel instances) ─────────────
@@ -74,8 +75,7 @@ const BodySchema = z.object({
 type HandzoneOption = 'none' | 'botulinum' | 'locoregional' | 'locoregional-periop'
 type SatelliteOption = 'none' | 'y2y' | 'imagistica'
 
-const HANDZONE_PRICE = 1000
-const BASE_URL       = 'https://congress.nopainmoldova.org'
+const BASE_URL = 'https://congress.nopainmoldova.org'
 
 function normalizePhone(raw: string): string {
   let digits = raw.replace(/\D/g, '')
@@ -194,7 +194,19 @@ export async function POST(req: NextRequest) {
       const f    = forms[i] as Record<string, string>
       const handzone  = (f.handzone  || 'none') as HandzoneOption
       const satellite = (f.satellite || 'none') as SatelliteOption
-      const totalPrice = item.priceNum + (handzone !== 'none' ? HANDZONE_PRICE : 0)
+
+      // Price comes from the server, never from the request body. `priceNum`
+      // is still accepted so existing clients keep validating, but it is only
+      // used to notice a mismatch — a stale cached bundle, or someone trying
+      // to name their own price.
+      const totalPrice = ticketPrice(item.type, handzone !== 'none')
+      if (item.priceNum !== TICKET_PRICES_MDL[item.type]) {
+        console.warn(JSON.stringify({
+          level: 'warn', event: 'register-price-mismatch',
+          type: item.type, clientPriceNum: item.priceNum,
+          serverPrice: TICKET_PRICES_MDL[item.type], charged: totalPrice,
+        }))
+      }
       grandTotal += totalPrice
 
       let personId: number
@@ -254,7 +266,7 @@ export async function POST(req: NextRequest) {
         items: cart.map((item, i) => {
           const f2 = forms[i] as Record<string, string>
           const hz = (f2.handzone || 'none') as HandzoneOption
-          const price = parseFloat((item.priceNum + (hz !== 'none' ? HANDZONE_PRICE : 0)).toFixed(2))
+          const price = parseFloat(ticketPrice(item.type, hz !== 'none').toFixed(2))
           return {
             externalId:   ticketIds[i].toString(),
             title:        item.name.substring(0, 100),
