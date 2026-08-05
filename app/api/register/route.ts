@@ -201,11 +201,19 @@ export async function POST(req: NextRequest) {
       // to name their own price.
       const totalPrice = ticketPrice(item.type, handzone !== 'none')
       if (item.priceNum !== TICKET_PRICES_MDL[item.type]) {
-        console.warn(JSON.stringify({
-          level: 'warn', event: 'register-price-mismatch',
-          type: item.type, clientPriceNum: item.priceNum,
-          serverPrice: TICKET_PRICES_MDL[item.type], charged: totalPrice,
-        }))
+        // The customer is charged correctly either way — this is worth an email
+        // because of what it implies: either someone is probing the endpoint
+        // with a price of their choosing, or a stale bundle is quoting a figure
+        // we no longer honour and buyers are seeing one number and paying
+        // another. Both need a human, neither shows up anywhere else.
+        await alertAdmin('register: client sent a price we did not charge', {
+          type: item.type,
+          clientPriceNum: item.priceNum,
+          serverPrice: TICKET_PRICES_MDL[item.type],
+          charged: totalPrice,
+          email: f.email,
+          ip,
+        })
       }
       grandTotal += totalPrice
 
