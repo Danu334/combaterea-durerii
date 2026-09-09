@@ -15,7 +15,7 @@ export const transporter = nodemailer.createTransport({
 
 const HANDZONE_LABELS: Record<string, string> = {
   botulinum:             'Workshop - Botulinum Toxin in Pain Management',
-  locoregional:          'Workshop - Locoregional Techniques',
+  locoregional:          'Workshop - Ultrasound-Guided Interventions for Pelvic, Hip & Spinal Pain',
   'locoregional-periop': 'Workshop - Locoregional Techniques for Perioperative Pain Management',
 }
 

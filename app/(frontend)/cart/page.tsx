@@ -55,9 +55,9 @@ const HANDZONE_OPTIONS: { value: HandzoneOption; label: string; description: str
   },
   {
     value: 'locoregional',
-    label: 'Locoregional Techniques',
-    description: 'Sesiune practică dedicată tehnicilor loco-regionale, orientată spre dezvoltarea abilităților practice și familiarizarea cu abordările contemporane în anestezia regională.',
-    speaker: 'TBA',
+    label: 'Ultrasound-Guided Interventions for Pelvic, Hip & Spinal Pain',
+    description: 'A hands-on workshop exploring ultrasound-guided interventions for pelvic, hip, and spinal pain management.',
+    speaker: 'Dr. Amar Salti (MD, EDRA, EDPM), Dr. Anca Ionescu (MD, FIPP)',
     location: 'Medpark Hospital',
     date: '1 octombrie, 09:00–17:00',
   },
