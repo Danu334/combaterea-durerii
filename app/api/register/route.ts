@@ -159,6 +159,16 @@ export async function POST(req: NextRequest) {
     const hzRequested: Record<string, number> = {}
     for (const h of requestedHandzones) hzRequested[h] = (hzRequested[h] ?? 0) + 1
 
+    // 'botulinum' still exists as a stored value on past tickets, but its
+    // remaining seats were allocated outside the system — never let new
+    // requests through regardless of the live count.
+    if ('botulinum' in hzRequested) {
+      return NextResponse.json(
+        { ok: false, error: `Locurile pentru workshopul hands-on "botulinum" sunt epuizate.` },
+        { status: 409 }
+      )
+    }
+
     for (const [hz, wanted] of Object.entries(hzRequested)) {
       if ((seatCounts[hz] ?? 0) + wanted > HANDZONE_CAPACITY) {
         return NextResponse.json(

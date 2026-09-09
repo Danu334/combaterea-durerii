@@ -46,14 +46,6 @@ const HANDZONE_PRICE = HANDZONE_PRICE_MDL
 
 const HANDZONE_OPTIONS: { value: HandzoneOption; label: string; description: string; speaker: string; location: string; date: string }[] = [
   {
-    value: 'botulinum',
-    label: 'Botulinum Toxin in Pain Management',
-    description: 'Workshop practic dedicat utilizării toxinei botulinice în managementul durerii, cu accent pe indicații clinice, tehnici de administrare și abordări moderne intervenționale.',
-    speaker: 'Nadyi Segin',
-    location: 'Medpark Hospital',
-    date: '1 octombrie, 09:00–17:00',
-  },
-  {
     value: 'locoregional-periop',
     label: 'Locoregional Techniques for Perioperative Pain Management',
     description: 'Workshop practic axat pe tehnici loco-regionale moderne utilizate în managementul durerii perioperatorii, incluzând principii ecoghidate și aplicații clinice actuale.',
